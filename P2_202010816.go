@@ -6,9 +6,13 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
+	"os/exec"
+	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Partition = struct {
@@ -48,11 +52,14 @@ func msg_error(err error) {
 
 func analizar() {
 	finalizar := false
-	fmt.Println("MIA - Ejemplo 7, Analizador a Mano con Go (exit para salir...)")
+	fmt.Println("*----------------------------------------------------------*")
+	fmt.Println("*                      [MIA] Proyecto 2                    *")
+	fmt.Println("*           Cesar Andre Ramirez Davila 202010816           *")
+	fmt.Println("*----------------------------------------------------------*")
 	reader := bufio.NewReader(os.Stdin)
 	//  Ciclo para lectura de multiples comandos
 	for !finalizar {
-		fmt.Print("<Ejemplo_7>: ")
+		fmt.Print("Ingrese un comando - ")
 		comando, _ := reader.ReadString('\n')
 		if strings.Contains(comando, "exit") {
 			finalizar = true
@@ -70,6 +77,7 @@ func split_comando(comando string) {
 	// Eliminacion de saltos de linea
 	comando = strings.Replace(comando, "\n", "", 1)
 	comando = strings.Replace(comando, "\r", "", 1)
+
 	// Guardado de parametros
 	if strings.Contains(comando, "mostrar") {
 		commandArray = append(commandArray, comando)
@@ -83,8 +91,8 @@ func split_comando(comando string) {
 func ejecucion_comando(commandArray []string) {
 	// Identificacion de comando y ejecucion
 	data := strings.ToLower(commandArray[0])
-	if data == "crear_disco" {
-		crear_disco(commandArray)
+	if data == "mkdisk" {
+		comando_mkdisk(commandArray)
 	} else {
 		fmt.Println("Comando ingresado no es valido")
 	}
@@ -98,17 +106,20 @@ func ejecucion_comando(commandArray []string) {
 
 }
 
-func crear_disco(commandArray []string) {
+func comando_mkdisk(commandArray []string) {
 	tamano := 0
 	dimensional := ""
+	ajuste := ""
+	ruta := ""
 	tamano_archivo := 0
 	limite := 0
 	bloque := make([]byte, 1024)
 	// Lectura de parametros del comando
 	for i := 0; i < len(commandArray); i++ {
-		data := strings.ToLower(commandArray[i])
-		if strings.Contains(data, ">tamaño=") {
-			strtam := strings.Replace(data, ">tamaño=", "", 1)
+		//data := strings.ToLower(commandArray[i])
+		data := commandArray[i]
+		if strings.Contains(data, ">size=") {
+			strtam := strings.Replace(data, ">size=", "", 1)
 			strtam = strings.Replace(strtam, "\"", "", 2)
 			strtam = strings.Replace(strtam, "\r", "", 1)
 			tamano2, err := strconv.Atoi(strtam)
@@ -116,28 +127,56 @@ func crear_disco(commandArray []string) {
 			if err != nil {
 				msg_error(err)
 			}
-		} else if strings.Contains(data, ">dimensional=") {
-			dimensional = strings.Replace(data, ">dimensional=", "", 1)
+		} else if strings.Contains(data, ">unit=") {
+			dimensional = strings.Replace(data, ">unit=", "", 1)
 			dimensional = strings.Replace(dimensional, "\"", "", 2)
+		} else if strings.Contains(data, ">fit=") {
+			ajuste = strings.Replace(data, ">fit=", "", 1)
+			ajuste = strings.Replace(ajuste, "\"", "", 2)
+		} else if strings.Contains(data, ">path=") {
+			ruta = strings.Replace(data, ">path=", "", 1)
+			//ruta = data
+			//fmt.Println("Ahora? ", ruta)
 		}
 	}
+
+	rand.Seed(time.Now().UnixNano())
+
+	dsk_s := rand.Intn(1000) + 1
+
+	fmt.Println("Numero = ", dsk_s)
+
 	// Calculo de tamaño del archivo
 	if strings.Contains(dimensional, "k") {
 		tamano_archivo = tamano
 	} else if strings.Contains(dimensional, "m") {
 		tamano_archivo = tamano * 1024
-	} else if strings.Contains(dimensional, "g") {
-		tamano_archivo = tamano * 1024 * 1024
+	} else if strings.Contains(dimensional, "") {
+		tamano_archivo = tamano * 1024
 	}
 	// Preparacion del bloque a escribir en archivo
 	for j := 0; j < 1024; j++ {
 		bloque[j] = 0
 	}
+
 	// Creacion, escritura y cierre de archivo
-	disco, err := os.Create("Ejemplo7.dsk")
+	//disco, err := os.Create("Ejemplo7.dsk")
+	directorio := path.Dir(ruta)
+
+	permisos := os.FileMode(0755) // permisos para el directorio creado (en octal)
+	err := os.MkdirAll(directorio, permisos)
+
+	otropermiso := "sudo chmod 777 \"" + directorio + "\""
+	out, err := exec.Command(otropermiso).Output()
+
+	disco, err := os.Create(ruta)
+
 	if err != nil {
 		msg_error(err)
 	}
+
+	fmt.Println(string(out))
+
 	for limite < tamano_archivo {
 		_, err := disco.Write(bloque)
 		if err != nil {
@@ -146,12 +185,20 @@ func crear_disco(commandArray []string) {
 		limite++
 	}
 	disco.Close()
+
+	err = os.Chmod(ruta, 0660)
+	if err != nil {
+		fmt.Println("Error al asignar permisos:", err)
+		return
+	}
+	fmt.Println("Archivo creado con éxito y permisos asignados.")
 	// Resumen de accion realizada
 	fmt.Print("Creacion de Disco:")
 	fmt.Print(" Tamaño: ")
 	fmt.Print(tamano)
 	fmt.Print(" Dimensional: ")
 	fmt.Println(dimensional)
+
 }
 
 func struct_to_bytes(p interface{}) []byte {
