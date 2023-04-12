@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/rand"
 	"os"
-	"os/exec"
 	"path"
 	"strconv"
 	"strings"
@@ -160,22 +159,26 @@ func comando_mkdisk(commandArray []string) {
 	}
 
 	// Creacion, escritura y cierre de archivo
-	//disco, err := os.Create("Ejemplo7.dsk")
 	directorio := path.Dir(ruta)
 
-	permisos := os.FileMode(0755) // permisos para el directorio creado (en octal)
-	err := os.MkdirAll(directorio, permisos)
+	if _, err := os.Stat(directorio); os.IsNotExist(err) {
+		// la ruta no existe, se debe crear
+		if err := os.MkdirAll(directorio, 0755); err != nil {
+			panic(err)
+		}
 
-	otropermiso := "sudo chmod 777 \"" + directorio + "\""
-	out, err := exec.Command(otropermiso).Output()
+		if err := os.Chmod(directorio, 0777); err != nil {
+			panic(err)
+		}
+	} else {
+		// la ruta ya existe, se puede continuar
+	}
 
 	disco, err := os.Create(ruta)
 
 	if err != nil {
 		msg_error(err)
 	}
-
-	fmt.Println(string(out))
 
 	for limite < tamano_archivo {
 		_, err := disco.Write(bloque)
@@ -184,13 +187,12 @@ func comando_mkdisk(commandArray []string) {
 		}
 		limite++
 	}
-	disco.Close()
 
-	err = os.Chmod(ruta, 0660)
-	if err != nil {
-		fmt.Println("Error al asignar permisos:", err)
-		return
+	if err := disco.Chmod(0777); err != nil {
+		panic(err)
 	}
+
+	disco.Close()
 	fmt.Println("Archivo creado con éxito y permisos asignados.")
 	// Resumen de accion realizada
 	fmt.Print("Creacion de Disco:")
