@@ -15,23 +15,23 @@ import (
 )
 
 type Partition = struct {
-	part_status [100]byte
-	part_type   [100]byte
-	part_fit    [100]byte
-	part_start  [100]byte
-	part_size   [100]byte
-	part_name   [100]byte
+	Part_status [100]byte
+	Part_type   [100]byte
+	Part_fit    [100]byte
+	Part_start  [100]byte
+	Part_size   [100]byte
+	Part_name   [100]byte
 }
 
 type MBR = struct {
-	mbr_tamano         [100]byte
-	mbr_fecha_creacion [100]byte
-	mbr_dsk_signature  [100]byte
-	dsk_fit            [100]byte
-	// mbr_partition_1 [100]byte
-	// mbr_partition_2 [100]byte
-	// mbr_partition_3 [100]byte
-	// mbr_partition_4 [100]byte
+	Mbr_tamano         [100]byte
+	Mbr_fecha_creacion [100]byte
+	Mbr_dsk_signature  [100]byte
+	Dsk_fit            [100]byte
+	Mbr_partition_1    Partition
+	Mbr_partition_2    Partition
+	Mbr_partition_3    Partition
+	Mbr_partition_4    Partition
 }
 
 type ejemplo = struct {
@@ -92,6 +92,8 @@ func ejecucion_comando(commandArray []string) {
 	data := strings.ToLower(commandArray[0])
 	if data == "mkdisk" {
 		comando_mkdisk(commandArray)
+	} else if data == "rmdisk" {
+		comando_rmdisk(commandArray)
 	} else {
 		fmt.Println("Comando ingresado no es valido")
 	}
@@ -106,9 +108,16 @@ func ejecucion_comando(commandArray []string) {
 }
 
 func comando_mkdisk(commandArray []string) {
+	Disco := MBR{}
+	straux := ""
+	// m_tamano := ""
+	m_fecha := ""
+	// m_dsk := ""
+	m_fit := ""
 	tamano := 0
 	dimensional := ""
 	ajuste := ""
+	fit := ""
 	ruta := ""
 	tamano_archivo := 0
 	limite := 0
@@ -127,11 +136,13 @@ func comando_mkdisk(commandArray []string) {
 				msg_error(err)
 			}
 		} else if strings.Contains(data, ">unit=") {
-			dimensional = strings.Replace(data, ">unit=", "", 1)
-			dimensional = strings.Replace(dimensional, "\"", "", 2)
+			straux = strings.Replace(data, ">unit=", "", 1)
+			straux = strings.Replace(dimensional, "\"", "", 2)
+			dimensional = straux
 		} else if strings.Contains(data, ">fit=") {
-			ajuste = strings.Replace(data, ">fit=", "", 1)
-			ajuste = strings.Replace(ajuste, "\"", "", 2)
+			straux = strings.Replace(data, ">fit=", "", 1)
+			straux = strings.Replace(ajuste, "\"", "", 2)
+			ajuste = straux
 		} else if strings.Contains(data, ">path=") {
 			ruta = strings.Replace(data, ">path=", "", 1)
 			//ruta = data
@@ -147,11 +158,24 @@ func comando_mkdisk(commandArray []string) {
 
 	// Calculo de tamaño del archivo
 	if strings.Contains(dimensional, "k") {
+		dimensional = "K"
 		tamano_archivo = tamano
 	} else if strings.Contains(dimensional, "m") {
+		dimensional = "M"
 		tamano_archivo = tamano * 1024
 	} else if strings.Contains(dimensional, "") {
+		dimensional = "M"
 		tamano_archivo = tamano * 1024
+	}
+
+	if strings.Contains(ajuste, "ff") {
+		fit = "F"
+	} else if strings.Contains(ajuste, "bf") {
+		fit = "B"
+	} else if strings.Contains(ajuste, "wf") {
+		fit = "W"
+	} else if strings.Contains(ajuste, "") {
+		fit = "F"
 	}
 	// Preparacion del bloque a escribir en archivo
 	for j := 0; j < 1024; j++ {
@@ -192,7 +216,67 @@ func comando_mkdisk(commandArray []string) {
 		panic(err)
 	}
 
+	// Obtiene la fecha y hora actual
+	fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println(fecha_creacion)
+
+	m_fecha = string(fecha_creacion)
+	m_fit = string(fit)
+
+	// CONFIGURACION MBR
+
+	copy(Disco.Mbr_tamano[:], strconv.Itoa(tamano_archivo))
+	copy(Disco.Mbr_fecha_creacion[:], m_fecha)
+	copy(Disco.Mbr_dsk_signature[:], []byte(strconv.Itoa(dsk_s)))
+	copy(Disco.Dsk_fit[:], m_fit)
+
+	//CONFIGURANDO PARTICIONES
+
+	copy(Disco.Mbr_partition_1.Part_status[:], "0")
+	copy(Disco.Mbr_partition_2.Part_status[:], "0")
+	copy(Disco.Mbr_partition_3.Part_status[:], "0")
+	copy(Disco.Mbr_partition_4.Part_status[:], "0")
+
+	copy(Disco.Mbr_partition_1.Part_type[:], "/0")
+	copy(Disco.Mbr_partition_2.Part_type[:], "/0")
+	copy(Disco.Mbr_partition_3.Part_type[:], "/0")
+	copy(Disco.Mbr_partition_4.Part_type[:], "/0")
+
+	copy(Disco.Mbr_partition_1.Part_fit[:], "/0")
+	copy(Disco.Mbr_partition_2.Part_fit[:], "/0")
+	copy(Disco.Mbr_partition_2.Part_fit[:], "/0")
+	copy(Disco.Mbr_partition_2.Part_fit[:], "/0")
+
+	copy(Disco.Mbr_partition_1.Part_start[:], strconv.Itoa(0))
+	copy(Disco.Mbr_partition_2.Part_start[:], strconv.Itoa(0))
+	copy(Disco.Mbr_partition_3.Part_start[:], strconv.Itoa(0))
+	copy(Disco.Mbr_partition_4.Part_start[:], strconv.Itoa(0))
+
+	copy(Disco.Mbr_partition_1.Part_size[:], strconv.Itoa(0))
+	copy(Disco.Mbr_partition_2.Part_size[:], strconv.Itoa(0))
+	copy(Disco.Mbr_partition_3.Part_size[:], strconv.Itoa(0))
+	copy(Disco.Mbr_partition_4.Part_size[:], strconv.Itoa(0))
+
+	copy(Disco.Mbr_partition_1.Part_name[:], "")
+	copy(Disco.Mbr_partition_2.Part_name[:], "")
+	copy(Disco.Mbr_partition_3.Part_name[:], "")
+	copy(Disco.Mbr_partition_4.Part_name[:], "")
+
+	// Conversion de struct a bytes
+	ejmbyte := struct_to_bytes(Disco)
+	// Cambio de posicion de puntero dentro del archivo
+	newpos, err := disco.Seek(0, os.SEEK_SET)
+	if err != nil {
+		msg_error(err)
+	}
+	// Escritura de struct en archivo binario
+	_, err = disco.WriteAt(ejmbyte, newpos)
+	if err != nil {
+		msg_error(err)
+	}
+
 	disco.Close()
+
 	fmt.Println("Archivo creado con éxito y permisos asignados.")
 	// Resumen de accion realizada
 	fmt.Print("Creacion de Disco:")
@@ -201,6 +285,9 @@ func comando_mkdisk(commandArray []string) {
 	fmt.Print(" Dimensional: ")
 	fmt.Println(dimensional)
 
+}
+
+func comando_rmdisk(commandArray []string) {
 }
 
 func struct_to_bytes(p interface{}) []byte {
