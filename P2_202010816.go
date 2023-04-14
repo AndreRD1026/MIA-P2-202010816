@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -94,6 +95,8 @@ func ejecucion_comando(commandArray []string) {
 		comando_mkdisk(commandArray)
 	} else if data == "rmdisk" {
 		comando_rmdisk(commandArray)
+	} else if data == "fdisk" {
+		comando_fkdisk(commandArray)
 	} else {
 		fmt.Println("Comando ingresado no es valido")
 	}
@@ -110,6 +113,7 @@ func ejecucion_comando(commandArray []string) {
 func comando_mkdisk(commandArray []string) {
 	Disco := MBR{}
 	straux := ""
+	stamano := ""
 	// m_tamano := ""
 	m_fecha := ""
 	// m_dsk := ""
@@ -126,10 +130,15 @@ func comando_mkdisk(commandArray []string) {
 	for i := 0; i < len(commandArray); i++ {
 		//data := strings.ToLower(commandArray[i])
 		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
 		if strings.Contains(data, ">size=") {
 			strtam := strings.Replace(data, ">size=", "", 1)
 			strtam = strings.Replace(strtam, "\"", "", 2)
 			strtam = strings.Replace(strtam, "\r", "", 1)
+			stamano = strtam
 			tamano2, err := strconv.Atoi(strtam)
 			tamano = tamano2
 			if err != nil {
@@ -150,11 +159,25 @@ func comando_mkdisk(commandArray []string) {
 		}
 	}
 
+	//Validando que vengan los parametros obligatorios
+
+	if ruta == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado una ruta para crear el disco")
+		fmt.Println("")
+		return
+	}
+
+	if stamano == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado el tamanio del disco")
+		fmt.Println("")
+		return
+	}
+
 	rand.Seed(time.Now().UnixNano())
 
 	dsk_s := rand.Intn(1000) + 1
 
-	fmt.Println("Numero = ", dsk_s)
+	//fmt.Println("Numero = ", dsk_s)
 
 	// Calculo de tamaño del archivo
 	if strings.Contains(dimensional, "k") {
@@ -218,7 +241,7 @@ func comando_mkdisk(commandArray []string) {
 
 	// Obtiene la fecha y hora actual
 	fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
-	fmt.Println(fecha_creacion)
+	//fmt.Println(fecha_creacion)
 
 	m_fecha = string(fecha_creacion)
 	m_fit = string(fit)
@@ -227,7 +250,7 @@ func comando_mkdisk(commandArray []string) {
 
 	copy(Disco.Mbr_tamano[:], strconv.Itoa(tamano_archivo))
 	copy(Disco.Mbr_fecha_creacion[:], m_fecha)
-	copy(Disco.Mbr_dsk_signature[:], []byte(strconv.Itoa(dsk_s)))
+	copy(Disco.Mbr_dsk_signature[:], strconv.Itoa(dsk_s))
 	copy(Disco.Dsk_fit[:], m_fit)
 
 	//CONFIGURANDO PARTICIONES
@@ -277,17 +300,214 @@ func comando_mkdisk(commandArray []string) {
 
 	disco.Close()
 
-	fmt.Println("Archivo creado con éxito y permisos asignados.")
-	// Resumen de accion realizada
-	fmt.Print("Creacion de Disco:")
-	fmt.Print(" Tamaño: ")
-	fmt.Print(tamano)
-	fmt.Print(" Dimensional: ")
-	fmt.Println(dimensional)
+	// cout << "" << endl;
+	// cout << "*                 Disco creado con exito                   *" << endl;
+	// cout << "" << endl;
+
+	fmt.Println("")
+	fmt.Println("*                 Disco creado con exito                   *")
+	fmt.Println("")
 
 }
 
 func comando_rmdisk(commandArray []string) {
+	ruta := ""
+	for i := 0; i < len(commandArray); i++ {
+		//data := strings.ToLower(commandArray[i])
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+		if strings.Contains(data, ">path=") {
+			ruta = strings.Replace(data, ">path=", "", 1)
+			//ruta = data
+			//fmt.Println("Ahora? ", ruta)
+		}
+	}
+
+	if ruta == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado una ruta para eliminar")
+		fmt.Println("")
+		return
+	}
+
+	directorio := path.Dir(ruta)
+	nombreCompleto := filepath.Base(ruta)
+	ultimoDato := strings.Split(nombreCompleto, "/")[len(strings.Split(nombreCompleto, "/"))-1]
+
+	err := filepath.Walk(directorio, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Si el archivo coincide con el nombre que desea eliminar, eliminarlo
+		if info.Name() == ultimoDato {
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+			fmt.Println("")
+			//fmt.Println("*                 Disco creado con exito                   *")
+			fmt.Println("*               Disco eliminado con exito                  *")
+			fmt.Println("")
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		//fmt.Printf("¡¡ Error !! al buscar y eliminar el archivo: %v\n", err)
+		fmt.Println("¡¡ Error !! No se ha encontrado el archivo", err)
+	}
+
+}
+
+func comando_fkdisk(commandArray []string) {
+
+	tamano_parti := ""
+	straux := ""
+	unidad := ""
+	rutaa := ""
+	tipo_part := ""
+	ajuste_part := ""
+	nombre_part := ""
+	tamano_part := 0
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">size=") {
+			strtam := strings.Replace(data, ">size=", "", 1)
+			strtam = strings.Replace(strtam, "\"", "", 2)
+			strtam = strings.Replace(strtam, "\r", "", 1)
+			tamano_parti = strtam
+			tamano2, err := strconv.Atoi(strtam)
+			tamano_part = tamano2
+			if err != nil {
+				msg_error(err)
+			}
+		} else if strings.Contains(data, ">unit=") {
+			straux = strings.Replace(data, ">unit=", "", 1)
+			//straux = strings.Replace(dimensional, "\"", "", 2)
+			unidad = straux
+		} else if strings.Contains(data, ">path=") {
+			rutaa = strings.Replace(data, ">path=", "", 1)
+			//ruta = data
+			//fmt.Println("Ahora? ", ruta)
+		} else if strings.Contains(data, ">type=") {
+			tipo_part = strings.Replace(data, ">type=", "", 1)
+		} else if strings.Contains(data, ">fit=") {
+			straux = strings.Replace(data, ">fit=", "", 1)
+			straux = strings.Replace(data, "\"", "", 2)
+			ajuste_part = straux
+		} else if strings.Contains(data, ">name=") {
+			nombre_part = strings.Replace(data, ">name=", "", 1)
+		}
+	}
+
+	if tamano_parti == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un tamano para la particion")
+		fmt.Println("")
+		return
+	}
+
+	if rutaa == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado una ruta para el disco")
+		fmt.Println("")
+		return
+	}
+
+	if nombre_part == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un nombre para la particion")
+		fmt.Println("")
+		return
+	}
+
+	part_unit := ""
+	part_type := ""
+	part_fit := ""
+
+	if strings.Contains(unidad, "b") {
+		part_unit = "B"
+	} else if strings.Contains(unidad, "k") {
+		part_unit = "K"
+	} else if strings.Contains(unidad, "m") {
+		part_unit = "M"
+	} else if strings.Contains(unidad, "") {
+		part_unit = "K"
+	}
+
+	if strings.Contains(tipo_part, "p") {
+		part_type = "P"
+	} else if strings.Contains(tipo_part, "e") {
+		part_type = "E"
+	} else if strings.Contains(tipo_part, "l") {
+		part_type = "L"
+	} else if strings.Contains(tipo_part, "") {
+		part_type = "P"
+	}
+
+	if strings.Contains(ajuste_part, "bf") {
+		part_fit = "B"
+	} else if strings.Contains(ajuste_part, "ff") {
+		part_fit = "F"
+	} else if strings.Contains(ajuste_part, "wf") {
+		part_fit = "W"
+	} else if strings.Contains(ajuste_part, "") {
+		part_fit = "W"
+	}
+
+	fmt.Println("Datos ")
+	fmt.Println(tamano_part)
+	fmt.Println(part_unit)
+	fmt.Println(rutaa)
+	fmt.Println(part_type)
+	fmt.Println(part_fit)
+	fmt.Println(nombre_part)
+
+	fin_archivo := false
+	var emptyid [100]byte
+	ejm_empty := MBR{}
+	// Apertura de archivo
+	disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+	if err != nil {
+		msg_error(err)
+	}
+	// Calculo del tamano de struct en bytes
+	ejm2 := struct_to_bytes(ejm_empty)
+	sstruct := len(ejm2)
+	if !fin_archivo {
+		// Lectrura de conjunto de bytes en archivo binario
+		lectura := make([]byte, sstruct)
+		_, err = disco.ReadAt(lectura, 0)
+		if err != nil && err != io.EOF {
+			msg_error(err)
+		}
+		// Conversion de bytes a struct
+		ejm := bytes_to_struct1(lectura)
+		sstruct = len(lectura)
+		if err != nil {
+			msg_error(err)
+		}
+		if ejm.Mbr_tamano == emptyid {
+			fin_archivo = true
+		} else {
+			fmt.Println("Sacando los datos del .dsk")
+			fmt.Print(" Tamaño: ")
+			fmt.Print(string(ejm.Mbr_tamano[:]))
+			fmt.Print(" Fecha: ")
+			fmt.Print(string(ejm.Mbr_fecha_creacion[:]))
+			fmt.Print(" DSK: ")
+			fmt.Print(string(ejm.Mbr_dsk_signature[:]))
+			fmt.Print(" Ajuste: ")
+			fmt.Println(string(ejm.Dsk_fit[:]))
+		}
+	}
+	disco.Close()
 }
 
 func struct_to_bytes(p interface{}) []byte {
@@ -304,6 +524,17 @@ func struct_to_bytes(p interface{}) []byte {
 func bytes_to_struct(s []byte) ejemplo {
 	// Decodificacion de [] Bytes a Struct ejemplo
 	p := ejemplo{}
+	dec := gob.NewDecoder(bytes.NewReader(s))
+	err := dec.Decode(&p)
+	if err != nil && err != io.EOF {
+		msg_error(err)
+	}
+	return p
+}
+
+func bytes_to_struct1(s []byte) MBR {
+	// Decodificacion de [] Bytes a Struct ejemplo
+	p := MBR{}
 	dec := gob.NewDecoder(bytes.NewReader(s))
 	err := dec.Decode(&p)
 	if err != nil && err != io.EOF {
