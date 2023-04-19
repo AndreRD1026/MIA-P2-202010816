@@ -17,19 +17,19 @@ import (
 )
 
 type Partition = struct {
-	Part_status [100]byte
-	Part_type   [100]byte
-	Part_fit    [100]byte
-	Part_start  [100]byte
-	Part_size   [100]byte
-	Part_name   [100]byte
+	Part_status [10]byte
+	Part_type   [10]byte
+	Part_fit    [10]byte
+	Part_start  [10]byte
+	Part_size   [10]byte
+	Part_name   [20]byte
 }
 
 type MBR = struct {
-	Mbr_tamano         [100]byte
-	Mbr_fecha_creacion [100]byte
-	Mbr_dsk_signature  [100]byte
-	Dsk_fit            [100]byte
+	Mbr_tamano         [10]byte
+	Mbr_fecha_creacion [10]byte
+	Mbr_dsk_signature  [10]byte
+	Dsk_fit            [10]byte
 	Mbr_partition_1    Partition
 	Mbr_partition_2    Partition
 	Mbr_partition_3    Partition
@@ -37,15 +37,29 @@ type MBR = struct {
 }
 
 type EBR = struct {
-	Part_status [100]byte
-	Part_fit    [100]byte
-	Part_start  [100]byte
-	Part_size   [100]byte
-	Part_next   [100]byte
-	Part_name   [100]byte
+	Part_status [20]byte
+	Part_fit    [20]byte
+	Part_start  [20]byte
+	Part_size   [20]byte
+	Part_next   [20]byte
+	Part_name   [20]byte
 }
 
 // Esto ayuda para el montaje de las particiones
+
+type NodoMount struct {
+	status           string
+	id               string
+	ruta             string
+	nombreparticion  string
+	tipoparticion    string
+	inicioparticion  int
+	tamanioparticion int
+	horamontado      string
+	vecesmontada     int
+	nextmount        *NodoMount
+	prevmount        *NodoMount
+}
 
 func main() {
 	analizar()
@@ -363,11 +377,16 @@ func comando_rmdisk(commandArray []string) {
 	})
 
 	if err != nil {
-		//fmt.Printf("¡¡ Error !! al buscar y eliminar el archivo: %v\n", err)
 		fmt.Println("¡¡ Error !! No se ha encontrado el archivo", err)
 	}
 
 }
+
+/*
+
+*? Faltan las particiones logicas
+
+ */
 
 func comando_fkdisk(commandArray []string) {
 
@@ -483,7 +502,7 @@ func comando_fkdisk(commandArray []string) {
 	//fmt.Println(nombre_part)
 
 	fin_archivo := false
-	var emptymbr [100]byte
+	var emptymbr [10]byte
 	ejm_empty := MBR{}
 	// Apertura de archivo
 	disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
@@ -613,16 +632,16 @@ func comando_fkdisk(commandArray []string) {
 				if existetipo == "P" || existetipo == "E" {
 					switch i {
 					case 0:
-						discop.Mbr_partition_1.Part_status = [100]byte{'1'}
+						discop.Mbr_partition_1.Part_status = [10]byte{'1'}
 						//fmt.Println("Entra al 1")
 					case 1:
-						discop.Mbr_partition_2.Part_status = [100]byte{'1'}
+						discop.Mbr_partition_2.Part_status = [10]byte{'1'}
 						//fmt.Println("Entra al 2")
 					case 2:
-						discop.Mbr_partition_3.Part_status = [100]byte{'1'}
+						discop.Mbr_partition_3.Part_status = [10]byte{'1'}
 						//fmt.Println("Entra al 3")
 					case 3:
-						discop.Mbr_partition_4.Part_status = [100]byte{'1'}
+						discop.Mbr_partition_4.Part_status = [10]byte{'1'}
 						//fmt.Println("Entra al 4")
 					}
 				}
@@ -693,6 +712,8 @@ func comando_fkdisk(commandArray []string) {
 				partSizeStr := string(particion[0].Part_size[:])
 				partSizeStr = strings.TrimRightFunc(partSizeStr, func(r rune) bool { return r == '\x00' })
 				partSizeInt, err := strconv.Atoi(partSizeStr)
+				pruebainicio := (partSizeInt * 1024)
+				fmt.Println("Que sale en bytes ", pruebainicio)
 				if err != nil {
 					// Manejo del error
 				}
@@ -710,7 +731,8 @@ func comando_fkdisk(commandArray []string) {
 					unaprueba := string(particion[0].Part_start[:])
 					unaprueba = strings.TrimRightFunc(unaprueba, func(r rune) bool { return r == '\x00' })
 					intprueba, err := strconv.Atoi(unaprueba)
-					startt := intprueba + partSizeInt + 1
+					startt := intprueba + pruebainicio + 1
+					//startt := intprueba + partSizeInt + 1
 					fmt.Println("Inicio? ", intprueba)
 					fmt.Println("Size? ", partSizeInt)
 					fmt.Println("Start? ", startt)
@@ -756,6 +778,7 @@ func comando_fkdisk(commandArray []string) {
 				partSizeStr1 = strings.TrimRightFunc(partSizeStr1, func(r rune) bool { return r == '\x00' })
 				partSizeInt, err := strconv.Atoi(partSizeStr)
 				partSizeInt1, err := strconv.Atoi(partSizeStr1)
+				pruebainicio := (partSizeInt1 * 1024)
 				if err != nil {
 					// Manejo del error
 				}
@@ -774,7 +797,7 @@ func comando_fkdisk(commandArray []string) {
 					unaprueba := string(particion[1].Part_start[:])
 					unaprueba = strings.TrimRightFunc(unaprueba, func(r rune) bool { return r == '\x00' })
 					intprueba, err := strconv.Atoi(unaprueba)
-					startt := intprueba + partSizeInt1 + 1
+					startt := intprueba + pruebainicio + 1
 					fmt.Println("Inicio? ", intprueba)
 					fmt.Println("Size? ", partSizeInt)
 					fmt.Println("Start? ", startt)
@@ -821,6 +844,7 @@ func comando_fkdisk(commandArray []string) {
 				partSizeInt, err := strconv.Atoi(partSizeStr)
 				partSizeInt1, err := strconv.Atoi(partSizeStr1)
 				partSizeInt2, err := strconv.Atoi(partSizeStr2)
+				pruebainicio := (partSizeInt2 * 1024)
 				if err != nil {
 					// Manejo del error
 				}
@@ -840,7 +864,7 @@ func comando_fkdisk(commandArray []string) {
 					unaprueba := string(particion[2].Part_start[:])
 					unaprueba = strings.TrimRightFunc(unaprueba, func(r rune) bool { return r == '\x00' })
 					intprueba, err := strconv.Atoi(unaprueba)
-					startt := intprueba + partSizeInt2 + 1
+					startt := intprueba + pruebainicio + 1
 					fmt.Println("Inicio? ", intprueba)
 					fmt.Println("Size? ", partSizeInt)
 					fmt.Println("Start? ", startt)
@@ -882,41 +906,94 @@ func comando_fkdisk(commandArray []string) {
 				return
 			}
 		} else if part_type == "L" {
+			// fin_archivo := false
+			// var emptymbr [10]byte
+			// ejm_empty := MBR{}
+			// // Apertura de archivo
+			// disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+			// if err != nil {
+			// 	msg_error(err)
+			// }
+			// // Calculo del tamano de struct en bytes
+
+			// string_tamano := ""
+			// //string_fecha := ""
+			// //string_dsk := ""
+			// //string_ajuste := ""
+			// var solaa MBR
+
+			// mbr2 := struct_to_bytes(ejm_empty)
+			// sstruct := len(mbr2)
+			// if !fin_archivo {
+			// 	// Lectrura de conjunto de bytes en archivo binario
+			// 	lectura := make([]byte, sstruct)
+			// 	_, err = disco.ReadAt(lectura, 0)
+			// 	if err != nil && err != io.EOF {
+			// 		msg_error(err)
+			// 	}
+			// 	// Conversion de bytes a struct
+			// 	mbr := bytes_to_struct_mbr(lectura)
+
+			// 	solaa = mbr
+			// 	sstruct = len(lectura)
+			// 	if err != nil {
+			// 		msg_error(err)
+			// 	}
+			// 	if mbr.Mbr_tamano == emptymbr {
+			// 		fin_archivo = true
+			// 	} else {
+			// 		//fmt.Println("Sacando los datos del .dsk")
+			// 		//fmt.Print(" Tamaño: ")
+			// 		//fmt.Print(string(ejm.Mbr_tamano[:]))
+			// 		string_tamano = string(mbr.Mbr_tamano[:])
+			// 		//fmt.Print(" Fecha: ")
+			// 		//fmt.Print(string(ejm.Mbr_fecha_creacion[:]))
+			// 		//string_fecha = string(mbr.Mbr_fecha_creacion[:])
+			// 		//fmt.Print(" DSK: ")
+			// 		//fmt.Print(string(ejm.Mbr_dsk_signature[:]))
+			// 		//string_dsk = string(mbr.Mbr_dsk_signature[:])
+			// 		//fmt.Print(" Ajuste: ")
+			// 		//fmt.Println(string(ejm.Dsk_fit[:]))
+			// 		//string_ajuste = string(mbr.Dsk_fit[:])
+			// 	}
+			// }
+			// disco.Close()
+
 			//Empiezan las particiones logicas
-			Prueba_EBR := EBR{}
+			//Prueba_EBR := EBR{}
 			var obtener_ebr EBR
 			encontrado := false
 			encontrado1 := false
 			encontrado2 := false
 			encontrado3 := false
-			for i := 0; i < 4; i++ {
-				particion1 := string(particion[0].Part_type[:])
-				particion2 := string(particion[1].Part_type[:])
-				particion3 := string(particion[2].Part_type[:])
-				particion4 := string(particion[3].Part_type[:])
-				//strings.TrimRightFunc(obtenertipo, func(r rune) bool { return r == '\x00' })
-				particion1 = strings.TrimRightFunc(particion1, func(r rune) bool { return r == '\x00' })
-				particion2 = strings.TrimRightFunc(particion2, func(r rune) bool { return r == '\x00' })
-				particion3 = strings.TrimRightFunc(particion3, func(r rune) bool { return r == '\x00' })
-				particion4 = strings.TrimRightFunc(particion4, func(r rune) bool { return r == '\x00' })
+			//for i := 0; i < 4; i++ {
+			particion1 := string(particion[0].Part_type[:])
+			particion2 := string(particion[1].Part_type[:])
+			particion3 := string(particion[2].Part_type[:])
+			particion4 := string(particion[3].Part_type[:])
+			//strings.TrimRightFunc(obtenertipo, func(r rune) bool { return r == '\x00' })
+			particion1 = strings.TrimRightFunc(particion1, func(r rune) bool { return r == '\x00' })
+			particion2 = strings.TrimRightFunc(particion2, func(r rune) bool { return r == '\x00' })
+			particion3 = strings.TrimRightFunc(particion3, func(r rune) bool { return r == '\x00' })
+			particion4 = strings.TrimRightFunc(particion4, func(r rune) bool { return r == '\x00' })
 
-				if particion1 == "E" {
-					//fmt.Println("La particion 1 es extendida")
-					encontrado = true
-				} else if particion2 == "E" {
-					//fmt.Println("La particion 2 es extendida")
-					encontrado1 = true
-				} else if particion3 == "E" {
-					//fmt.Println("La particion 3 es extendida")
-					encontrado2 = true
-				} else if particion4 == "E" {
-					//fmt.Println("La particion 4 es extendida")
-					encontrado3 = true
-				} else {
-					fmt.Println("¡¡ Error !! Primero debe crear una particion Extendida")
-					return
-				}
+			if particion1 == "E" {
+				//fmt.Println("La particion 1 es extendida")
+				encontrado = true
+			} else if particion2 == "E" {
+				//fmt.Println("La particion 2 es extendida")
+				encontrado1 = true
+			} else if particion3 == "E" {
+				//fmt.Println("La particion 3 es extendida")
+				encontrado2 = true
+			} else if particion4 == "E" {
+				//fmt.Println("La particion 4 es extendida")
+				encontrado3 = true
+			} else {
+				fmt.Println("¡¡ Error !! Primero debe crear una particion Extendida")
+				return
 			}
+			//}
 
 			if encontrado == true {
 				fmt.Println("Llega ?")
@@ -926,85 +1003,81 @@ func comando_fkdisk(commandArray []string) {
 				//int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
 				int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
 
+				//Veamos
 				// Apertura de archivo
 				disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
 				if err != nil {
 					msg_error(err)
 				}
 				// Calculo del tamano de struct en bytes
-				ejm2 := struct_to_bytes(Prueba_EBR)
-				sstruct := len(ejm2)
-				for !fin_archivo {
-					// Lectrura de conjunto de bytes en archivo binario
-					lectura := make([]byte, sstruct)
-					_, err = disco.ReadAt(lectura, int64(int_inicio_particion1))
-					if err != nil && err != io.EOF {
-						msg_error(err)
-					}
-					// Conversion de bytes a struct
-					ejm := bytes_to_struct_ebr(lectura)
-					obtener_ebr = ejm
-					sstruct = len(lectura)
-					if err != nil {
-						msg_error(err)
-					}
-					if len(strings.TrimSpace(string(ejm.Part_fit[:]))) == 0 {
-						fin_archivo = true
-					} else {
-						fmt.Print(" Status: ")
-						fmt.Print(string(ejm.Part_status[:]))
-
-						verificarlogicas := string(ejm.Part_name[:])
-						verificarlogicas = strings.TrimRightFunc(verificarlogicas, func(r rune) bool { return r == '\x00' })
-
-						if verificarlogicas == "" {
-							copy(obtener_ebr.Part_status[:], "0")
-							copy(obtener_ebr.Part_fit[:], part_fit)
-							copy(obtener_ebr.Part_start[:], strconv.Itoa(int_inicio_particion1))
-							copy(obtener_ebr.Part_size[:], strconv.Itoa(tamano_archivo1))
-							copy(obtener_ebr.Part_next[:], strconv.Itoa(-1))
-							copy(obtener_ebr.Part_name[:], nombre_part)
-
-							fmt.Println("Aun no existe una particion logica")
-							fmt.Println("Nombre a poner ", nombre_part)
-							fmt.Println("Tamano ", tamano_archivo1)
-
-							// Apertura del archivo
-							discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-							if err != nil {
-								msg_error(err)
-							}
-
-							// Conversion de struct a bytes
-							ejmbyte := struct_to_bytes(obtener_ebr)
-							// Cambio de posicion de puntero dentro del archivo
-							newpos, err := discoescritura.Seek(int64(int_inicio_particion1), os.SEEK_SET)
-							if err != nil {
-								msg_error(err)
-							}
-							// Escritura de struct en archivo binario
-							_, err = discoescritura.WriteAt(ejmbyte, newpos)
-							if err != nil {
-								msg_error(err)
-							}
-
-							discoescritura.Close()
-
-							fmt.Println("Se ha guardado")
-							return
-
-						} else {
-							fmt.Println("Entra cuando ya hay alguna particion")
-							fmt.Println("Nombre a poner ", nombre_part)
-							fmt.Println("Tamano ", tamano_archivo1)
-							return
-						}
-					}
-
+				sstruct := len(struct_to_bytes(ejm_empty))
+				lectura := make([]byte, sstruct)
+				_, err = disco.ReadAt(lectura, int64(int_inicio_particion1))
+				if err != nil && err != io.EOF {
+					msg_error(err)
 				}
-				disco.Close()
+				// Conversion de bytes a struct
+				ejm := bytes_to_struct_ebr(lectura)
+				sstruct = len(lectura)
+				if err != nil {
+					msg_error(err)
+				} else {
+					disco.Close()
+					verificarlogicas := string(ejm.Part_name[:])
+					verificarlogicas = strings.TrimRightFunc(verificarlogicas, func(r rune) bool { return r == '\x00' })
 
-				//fmt.Println("Entra al if encontrado 1")
+					if verificarlogicas == "" {
+						copy(obtener_ebr.Part_status[:], "0")
+						copy(obtener_ebr.Part_fit[:], part_fit)
+						copy(obtener_ebr.Part_start[:], strconv.Itoa(int_inicio_particion1))
+						copy(obtener_ebr.Part_size[:], strconv.Itoa(tamano_archivo1))
+						copy(obtener_ebr.Part_next[:], strconv.Itoa(-1))
+						copy(obtener_ebr.Part_name[:], nombre_part)
+
+						fmt.Println("Aun no existe una particion logica")
+						fmt.Println("Nombre a poner ", nombre_part)
+						fmt.Println("Tamano ", tamano_archivo1)
+
+						// Apertura del archivo
+						discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+						if err != nil {
+							msg_error(err)
+						}
+
+						// Conversion de struct a bytes
+						ejmbyte := struct_to_bytes(obtener_ebr)
+						//prr := len(ejmbyte)
+						// Cambio de posicion de puntero dentro del archivo
+						newpos, err := discoescritura.Seek(int64(int_inicio_particion1), os.SEEK_SET)
+						//startt := int(unsafe.Sizeof(discop) + 1)
+						//tamano_ebr := int(unsafe.Sizeof(obtener_ebr))
+						//newpos, err := discoescritura.Seek(int64(int_inicio_particion1*tamano_ebr), os.SEEK_SET)
+						if err != nil {
+							msg_error(err)
+						}
+						// Escritura de struct en archivo binario
+						_, err = discoescritura.WriteAt(ejmbyte, newpos)
+						if err != nil {
+							msg_error(err)
+						}
+
+						discoescritura.Close()
+
+						fmt.Println("Se ha guardado")
+						return
+
+					} else {
+						fmt.Println("Datos primer EBR")
+						fmt.Println("Nombre ", string(obtener_ebr.Part_name[:]))
+						fmt.Println("Tamano ", string(obtener_ebr.Part_size[:]))
+						fmt.Println("Inicio ", string(obtener_ebr.Part_start[:]))
+
+						fmt.Println("Entra cuando ya hay alguna particion")
+						fmt.Println("Nombre a poner ", nombre_part)
+						fmt.Println("Tamano ", tamano_archivo1)
+						return
+					}
+				}
 
 			} else if encontrado1 == true {
 				fmt.Println("Entra al if encontrado 2")
@@ -1026,6 +1099,10 @@ func comando_mount(commandArray []string) {
 	// tamano_parti := ""
 	// straux := ""
 	// unidad := ""
+	// tamano_parti := ""
+	// straux := ""
+	// tamano_part := 0
+	// tamano_archivo1 := 0
 	rutaa := ""
 	//ultimosdigitos := "16"
 	//numeroparticion := ""
@@ -1064,7 +1141,104 @@ func comando_mount(commandArray []string) {
 		return
 	}
 
-	fmt.Println("Llega al comando mount")
+	fin_archivo := false
+	var emptymbr [10]byte
+	ejm_empty := MBR{}
+	// Apertura de archivo
+	disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+	if err != nil {
+		msg_error(err)
+	}
+	// Calculo del tamano de struct en bytes
+
+	//string_tamano := ""
+	//string_fecha := ""
+	//string_dsk := ""
+	//string_ajuste := ""
+	var solaa MBR
+
+	mbr2 := struct_to_bytes(ejm_empty)
+	sstruct := len(mbr2)
+	if !fin_archivo {
+		// Lectrura de conjunto de bytes en archivo binario
+		lectura := make([]byte, sstruct)
+		_, err = disco.ReadAt(lectura, 0)
+		if err != nil && err != io.EOF {
+			msg_error(err)
+		}
+		// Conversion de bytes a struct
+		mbr := bytes_to_struct_mbr(lectura)
+
+		solaa = mbr
+		sstruct = len(lectura)
+		if err != nil {
+			msg_error(err)
+		}
+		if mbr.Mbr_tamano == emptymbr {
+			fin_archivo = true
+		} else {
+			//string_tamano = string(mbr.Mbr_tamano[:])
+		}
+	}
+	disco.Close()
+
+	// trimmed_string_tamano := strings.TrimRightFunc(string_tamano, func(r rune) bool { return r == '\x00' })
+	// tamano, err := strconv.Atoi(trimmed_string_tamano)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	//fmt.Println(reflect.TypeOf(tamano))
+	discop := solaa
+
+	particion := [4]Partition{
+		discop.Mbr_partition_1,
+		discop.Mbr_partition_2,
+		discop.Mbr_partition_3,
+		discop.Mbr_partition_4,
+	}
+
+	name_part1 := string(particion[0].Part_name[:])
+	name_part1 = strings.TrimRightFunc(name_part1, func(r rune) bool { return r == '\x00' })
+	name_part2 := string(particion[1].Part_name[:])
+	name_part2 = strings.TrimRightFunc(name_part2, func(r rune) bool { return r == '\x00' })
+	name_part3 := string(particion[2].Part_name[:])
+	name_part3 = strings.TrimRightFunc(name_part3, func(r rune) bool { return r == '\x00' })
+	name_part4 := string(particion[3].Part_name[:])
+	name_part4 = strings.TrimRightFunc(name_part4, func(r rune) bool { return r == '\x00' })
+
+	// for i := 0; i < 4; i++ {
+	// 	//particion[i] = disco.particion[i]
+	// 	pruebaa := string(particion[i].Part_name[:])
+	// 	otroo := string(particion[i].Part_status[:])
+	// 	otroo1 := string(particion[i].Part_fit[:])
+	// 	otroo2 := string(particion[i].Part_size[:])
+	// 	otroo3 := string(particion[i].Part_start[:])
+	// 	otroo4 := string(particion[i].Part_type[:])
+	// 	// hacer algo con pruebaa y otroo
+	// 	fmt.Println("Nombre ", pruebaa)
+	// 	fmt.Println("Status ", otroo)
+	// 	fmt.Println("Ajuste ", otroo1)
+	// 	fmt.Println("Tamano ", otroo2)
+	// 	fmt.Println("Inicio ", otroo3)
+	// 	fmt.Println("Tipo ", otroo4)
+	// 	fmt.Println("")
+	// }
+
+	if name_part1 == nombre_part {
+		fmt.Println("La particion a montar es la 1")
+	} else if name_part2 == nombre_part {
+		fmt.Println("La particion a montar es la 2")
+	} else if name_part3 == nombre_part {
+		fmt.Println("La particion a montar es la 3")
+	} else if name_part4 == nombre_part {
+		fmt.Println("La particion a montar es la 4")
+	} else {
+		fmt.Println("¡¡ Error !! No se encontro una particion con ese nombre")
+		return
+	}
+
+	//fmt.Println("Llega al comando mount")
 
 }
 
