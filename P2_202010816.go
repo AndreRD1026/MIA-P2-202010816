@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"path"
@@ -17,32 +18,76 @@ import (
 )
 
 type Partition = struct {
-	Part_status [10]byte
-	Part_type   [10]byte
-	Part_fit    [10]byte
-	Part_start  [10]byte
-	Part_size   [10]byte
-	Part_name   [20]byte
+	Part_status [10]byte // Indica si la partición está activa o no
+	Part_type   [10]byte // Valores P o E
+	Part_fit    [10]byte // Indica el Ajuste [B]est, [F]irst o [W]orst
+	Part_start  [10]byte // Indica en qué byte del disco inicia la partición
+	Part_size   [10]byte // Contiene el tamaño total de la partición en bytes
+	Part_name   [20]byte // Nombre de la partición
 }
 
 type MBR = struct {
-	Mbr_tamano         [10]byte
-	Mbr_fecha_creacion [10]byte
-	Mbr_dsk_signature  [10]byte
-	Dsk_fit            [10]byte
-	Mbr_partition_1    Partition
-	Mbr_partition_2    Partition
-	Mbr_partition_3    Partition
-	Mbr_partition_4    Partition
+	Mbr_tamano         [10]byte  // Tamanio del disco
+	Mbr_fecha_creacion [10]byte  // Fecha y hora de creacion del disco
+	Mbr_dsk_signature  [10]byte  // Numero random, identifica de forma unica a cada disco
+	Dsk_fit            [10]byte  // Ajuste de la particion [B]est, [F]irt o [W]orst
+	Mbr_partition_1    Partition // Estructura con información de la partición 1
+	Mbr_partition_2    Partition // Estructura con información de la partición 2
+	Mbr_partition_3    Partition // Estructura con información de la partición 3
+	Mbr_partition_4    Partition // Estructura con información de la partición 4
 }
 
 type EBR = struct {
-	Part_status [20]byte
-	Part_fit    [20]byte
-	Part_start  [20]byte
-	Part_size   [20]byte
-	Part_next   [20]byte
-	Part_name   [20]byte
+	Part_status [20]byte // Indica si esta activa o no
+	Part_fit    [20]byte // Indica el Ajuste [B]est, [F]irst o [W]orst
+	Part_start  [20]byte // Indica el byte donde inicia la particion
+	Part_size   [20]byte // Tamanio total de la particion
+	Part_next   [20]byte // Byte en el que está el próximo EBR. -1 si no hay siguiente
+	Part_name   [20]byte // Nombre de la particion
+}
+
+type SuperBloque = struct {
+	S_filesystem_type   [10]byte // Guarda el número que identifica el sistema de archivos utilizado
+	S_inodes_count      [10]byte // Guarda el número total de inodos
+	S_blocks_count      [10]byte // Guarda el número total de bloques
+	S_free_blocks_count [10]byte // Contiene el número de bloques libres
+	S_free_inodes_count [10]byte // Contiene el número de inodos libres
+	S_mtime             [10]byte // Última fecha en el que el sistema fue montado
+	S_mnt_count         [10]byte // Indica cuantas veces se ha montado el sistema
+	S_magic             [10]byte // Valor que identifica al sistema de archivos, tendrá el valor 0xEF53
+	S_inode_size        [10]byte // Tamaño del inodo
+	S_block_size        [10]byte // Tamaño del bloque
+	S_firts_ino         [10]byte // Primer inodo libre
+	S_first_blo         [10]byte // Primer bloque libre
+	S_bm_inode_start    [10]byte // Guardará el inicio del bitmap de inodos
+	S_bm_block_start    [10]byte // Guardará el inicio del bitmap de bloques
+	S_inode_start       [10]byte // Guardará el inicio de la tabla de inodos
+	S_block_start       [10]byte // Guardará el inicio de la tabla de bloques
+}
+
+type Inodos = struct {
+	I_uid   [10]byte // UID del usuario propietario del archivo o carpeta
+	I_gid   [10]byte // GID del grupo al que pertenece el archivo o carpeta.
+	I_size  [10]byte // Tamaño del archivo en bytes
+	I_atime [10]byte // Última fecha en que se leyó el inodo sin modificarlo
+	I_ctime [10]byte // Fecha en la que se creó el inodo
+	I_mtime [10]byte // Última fecha en la que se modifica el inodo
+	I_block [10]byte // Array en los que los primeros 16 registros son bloques directos.
+	I_type  [10]byte // indica si es archivo o carpeta. 1 = Archivo y 0 = Carpeta
+	I_perm  [10]byte // Guardará los permisos del archivo o carpeta.
+}
+
+type Content = struct {
+	B_name  [10]byte //Nombre de la carpeta o archivo
+	B_inodo [10]byte //Apuntador hacia un inodo asociado al archivo o carpeta
+}
+
+type BloqueCarpetas = struct {
+	B_content [4]Content //Array con el contenido de la carpeta
+}
+
+type BloqueArchivos = struct {
+	B_content [10]byte // Array con el contenido del archivo
 }
 
 // Esto ayuda para el montaje de las particiones
@@ -1504,6 +1549,87 @@ func comando_mount(commandArray []string) {
 }
 
 func comando_mkfs(commandArray []string) {
+	straux := ""
+
+	id_buscar := ""
+	type_part := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">id=") {
+			straux = strings.Replace(data, ">id=", "", 1)
+			//straux = strings.Replace(dimensional, "\"", "", 2)
+			id_buscar = straux
+		} else if strings.Contains(data, ">type=") {
+			type_part = strings.Replace(data, ">type=", "", 1)
+			//ruta = data
+			//fmt.Println("Ahora? ", ruta)
+		}
+	}
+
+	if id_buscar == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un id para el formateo")
+		fmt.Println("")
+		return
+	}
+
+	tipo_formateo := ""
+
+	if type_part == "full" {
+		tipo_formateo = "full"
+	} else if type_part == "" {
+		tipo_formateo = "full"
+	} else {
+		fmt.Println("El tipo de formateo no es aceptado")
+		return
+	}
+
+	if tipo_formateo == "full" {
+		fmt.Println("Entra al if para validar")
+		existe, nodo := miLista.buscarPorID(id_buscar)
+		if existe {
+			fmt.Println("Se encontró el nodo con id", nodo.id, " + ", nodo.nombreparticion, " + ", nodo.ruta)
+
+			//Empieza lo chido del EXT2 DX
+
+			partb := nodo.tamanioparticion * 1024 // tamaño del bloque en bytes
+			sb := SuperBloque{}                   // instancia de SuperBloque
+			pruebaI := Inodos{}
+			size := unsafe.Sizeof(sb)
+			size_Inode := unsafe.Sizeof(pruebaI)
+
+			n := float64(partb-int(size)) / (4 + float64(size_Inode) + 3*64)
+			nInodos := int(math.Floor(n))
+
+			n_e := float64(nInodos)
+
+			fmt.Println("Que sale en size superbloque ? ", strconv.Itoa(int(size)))
+			fmt.Println("Que sale en size inodos ? ", strconv.Itoa(int(size_Inode)))
+
+			fmt.Println(nInodos, n_e)
+
+			crear_EXT2(nodo, int(n_e))
+
+		} else {
+			fmt.Println("No se encontró ningúna particion con ese ID")
+			return
+		}
+	}
+}
+
+func crear_EXT2(nodoActual *NodoMount, n int) {
+	fmt.Println("Esto es en EXT2 ", nodoActual.nombreparticion, " + ", nodoActual.id, " + ", nodoActual.ruta)
+	fmt.Println("Esto es n ", n)
+
+	// Se crea el SuperBloque
+}
+
+func Escribir_SuperBloque(path string, SB SuperBloque, inicioP int) {
 
 }
 
@@ -1625,4 +1751,13 @@ func (lista *ListaDobleEnlazada) buscarPorRuta(ruta string) int {
 		}
 	}
 	return 0
+}
+
+func (lista *ListaDobleEnlazada) buscarPorID(id string) (bool, *NodoMount) {
+	for nodo := lista.first; nodo != nil; nodo = nodo.nextmount {
+		if nodo.id == id {
+			return true, nodo
+		}
+	}
+	return false, nil
 }
