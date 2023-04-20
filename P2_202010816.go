@@ -48,7 +48,6 @@ type EBR = struct {
 // Esto ayuda para el montaje de las particiones
 
 type NodoMount struct {
-	status           string
 	id               string
 	ruta             string
 	nombreparticion  string
@@ -56,10 +55,12 @@ type NodoMount struct {
 	inicioparticion  int
 	tamanioparticion int
 	horamontado      string
-	vecesmontada     int
+	numerodisco      int
 	nextmount        *NodoMount
 	prevmount        *NodoMount
 }
+
+var miLista *ListaDobleEnlazada = &ListaDobleEnlazada{}
 
 func main() {
 	analizar()
@@ -118,6 +119,8 @@ func ejecucion_comando(commandArray []string) {
 		comando_fkdisk(commandArray)
 	} else if data == "mount" {
 		comando_mount(commandArray)
+	} else if data == "mkfs" {
+		comando_mkfs(commandArray)
 	} else {
 		fmt.Println("Comando ingresado no es valido")
 	}
@@ -1104,7 +1107,7 @@ func comando_mount(commandArray []string) {
 	// tamano_part := 0
 	// tamano_archivo1 := 0
 	rutaa := ""
-	//ultimosdigitos := "16"
+
 	//numeroparticion := ""
 
 	// tipo_part := ""
@@ -1150,11 +1153,6 @@ func comando_mount(commandArray []string) {
 		msg_error(err)
 	}
 	// Calculo del tamano de struct en bytes
-
-	//string_tamano := ""
-	//string_fecha := ""
-	//string_dsk := ""
-	//string_ajuste := ""
 	var solaa MBR
 
 	mbr2 := struct_to_bytes(ejm_empty)
@@ -1207,38 +1205,305 @@ func comando_mount(commandArray []string) {
 	name_part4 := string(particion[3].Part_name[:])
 	name_part4 = strings.TrimRightFunc(name_part4, func(r rune) bool { return r == '\x00' })
 
-	// for i := 0; i < 4; i++ {
-	// 	//particion[i] = disco.particion[i]
-	// 	pruebaa := string(particion[i].Part_name[:])
-	// 	otroo := string(particion[i].Part_status[:])
-	// 	otroo1 := string(particion[i].Part_fit[:])
-	// 	otroo2 := string(particion[i].Part_size[:])
-	// 	otroo3 := string(particion[i].Part_start[:])
-	// 	otroo4 := string(particion[i].Part_type[:])
-	// 	// hacer algo con pruebaa y otroo
-	// 	fmt.Println("Nombre ", pruebaa)
-	// 	fmt.Println("Status ", otroo)
-	// 	fmt.Println("Ajuste ", otroo1)
-	// 	fmt.Println("Tamano ", otroo2)
-	// 	fmt.Println("Inicio ", otroo3)
-	// 	fmt.Println("Tipo ", otroo4)
-	// 	fmt.Println("")
-	// }
+	pruebadefuego := 0
+	letraAsignar := ""
+	for i := 0; i < 4; i++ {
+		saaal := string(particion[i].Part_status[:])
+		saaal = strings.TrimRightFunc(saaal, func(r rune) bool { return r == '\x00' })
+
+		if saaal == "1" {
+			pruebadefuego++
+		}
+	}
+
+	if pruebadefuego == 0 {
+		letraAsignar = "A"
+	} else if pruebadefuego == 1 {
+		letraAsignar = "B"
+	} else if pruebadefuego == 2 {
+		letraAsignar = "C"
+	} else if pruebadefuego == 3 {
+		letraAsignar = "D"
+	}
+
+	ultimosdigitos := "16"
+	numeros := obtenerNumeroRutas(miLista)
+	//println("Aqui esta la lista ", strconv.Itoa(numeros))
+	numeroAsignar := 0
+
+	numerodiscoo := miLista.buscarPorRuta(rutaa)
+	//fmt.Println("Que saca esto? ", numerodiscoo)
+
+	if numerodiscoo != 0 {
+		numeroAsignar = numerodiscoo
+	} else {
+		if numeros == 0 {
+			numeroAsignar = 1
+		} else {
+			numeroAsignar = numeros + 1
+		}
+	}
+
+	//fmt.Println("Cuantos salen? ", strconv.Itoa(pruebadefuego))
 
 	if name_part1 == nombre_part {
-		fmt.Println("La particion a montar es la 1")
+
+		montado := string(discop.Mbr_partition_1.Part_status[:])
+		montado = strings.TrimRightFunc(montado, func(r rune) bool { return r == '\x00' })
+
+		if montado == "1" {
+			fmt.Println("¡¡ Error !! La particion ya se encuentra montada")
+			return
+		}
+
+		//fmt.Println("La particion a montar es la 1")
+
+		fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
+
+		fecha_mount := string(fecha_creacion)
+
+		type_part1 := string(particion[0].Part_type[:])
+		type_part1 = strings.TrimRightFunc(type_part1, func(r rune) bool { return r == '\x00' })
+
+		start_part1 := string(particion[0].Part_start[:])
+		start_part1 = strings.TrimRightFunc(start_part1, func(r rune) bool { return r == '\x00' })
+		int_start_part1, err := strconv.Atoi(start_part1)
+
+		size_part1 := string(particion[0].Part_size[:])
+		size_part1 = strings.TrimRightFunc(size_part1, func(r rune) bool { return r == '\x00' })
+		int_size_part1, err := strconv.Atoi(size_part1)
+
+		if err != nil {
+			msg_error(err)
+		}
+		string_Numero := strconv.Itoa(numeroAsignar)
+
+		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+
+		copy(discop.Mbr_partition_1.Part_status[:], "1")
+
+		//Apertura del archivo
+		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		if err != nil {
+			msg_error(err)
+		}
+
+		// Conversion de struct a bytes
+		ejmbyte4 := struct_to_bytes(discop)
+		// Cambio de posicion de puntero dentro del archivo
+		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		if err != nil {
+			msg_error(err)
+		}
+		// Escritura de struct en archivo binario
+		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		if err != nil {
+			msg_error(err)
+		}
+
+		discoescritura.Close()
+
+		fmt.Println("")
+		fmt.Println("*               Particion montada con exito                *")
+		fmt.Println("")
+
+		miLista.ImprimirTabla()
 	} else if name_part2 == nombre_part {
-		fmt.Println("La particion a montar es la 2")
+		montado := string(discop.Mbr_partition_2.Part_status[:])
+		montado = strings.TrimRightFunc(montado, func(r rune) bool { return r == '\x00' })
+
+		if montado == "1" {
+			fmt.Println("¡¡ Error !! La particion ya se encuentra montada")
+			return
+		}
+		//fmt.Println("La particion a montar es la 2")
+
+		fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
+
+		fecha_mount := string(fecha_creacion)
+
+		type_part1 := string(particion[1].Part_type[:])
+		type_part1 = strings.TrimRightFunc(type_part1, func(r rune) bool { return r == '\x00' })
+
+		start_part1 := string(particion[1].Part_start[:])
+		start_part1 = strings.TrimRightFunc(start_part1, func(r rune) bool { return r == '\x00' })
+		int_start_part1, err := strconv.Atoi(start_part1)
+
+		size_part1 := string(particion[1].Part_size[:])
+		size_part1 = strings.TrimRightFunc(size_part1, func(r rune) bool { return r == '\x00' })
+		int_size_part1, err := strconv.Atoi(size_part1)
+
+		if err != nil {
+			msg_error(err)
+		}
+		string_Numero := strconv.Itoa(numeroAsignar)
+
+		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+
+		copy(discop.Mbr_partition_2.Part_status[:], "1")
+
+		//Apertura del archivo
+		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		if err != nil {
+			msg_error(err)
+		}
+
+		// Conversion de struct a bytes
+		ejmbyte4 := struct_to_bytes(discop)
+		// Cambio de posicion de puntero dentro del archivo
+		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		if err != nil {
+			msg_error(err)
+		}
+		// Escritura de struct en archivo binario
+		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		if err != nil {
+			msg_error(err)
+		}
+
+		discoescritura.Close()
+
+		fmt.Println("")
+		fmt.Println("*               Particion montada con exito                *")
+		fmt.Println("")
+
+		miLista.ImprimirTabla()
 	} else if name_part3 == nombre_part {
-		fmt.Println("La particion a montar es la 3")
+		montado := string(discop.Mbr_partition_3.Part_status[:])
+		montado = strings.TrimRightFunc(montado, func(r rune) bool { return r == '\x00' })
+
+		if montado == "1" {
+			fmt.Println("¡¡ Error !! La particion ya se encuentra montada")
+			return
+		}
+		//fmt.Println("La particion a montar es la 3")
+
+		fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
+
+		fecha_mount := string(fecha_creacion)
+
+		type_part1 := string(particion[2].Part_type[:])
+		type_part1 = strings.TrimRightFunc(type_part1, func(r rune) bool { return r == '\x00' })
+
+		start_part1 := string(particion[2].Part_start[:])
+		start_part1 = strings.TrimRightFunc(start_part1, func(r rune) bool { return r == '\x00' })
+		int_start_part1, err := strconv.Atoi(start_part1)
+
+		size_part1 := string(particion[2].Part_size[:])
+		size_part1 = strings.TrimRightFunc(size_part1, func(r rune) bool { return r == '\x00' })
+		int_size_part1, err := strconv.Atoi(size_part1)
+
+		if err != nil {
+			msg_error(err)
+		}
+		string_Numero := strconv.Itoa(numeroAsignar)
+
+		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+
+		copy(discop.Mbr_partition_3.Part_status[:], "1")
+
+		//Apertura del archivo
+		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		if err != nil {
+			msg_error(err)
+		}
+
+		// Conversion de struct a bytes
+		ejmbyte4 := struct_to_bytes(discop)
+		// Cambio de posicion de puntero dentro del archivo
+		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		if err != nil {
+			msg_error(err)
+		}
+		// Escritura de struct en archivo binario
+		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		if err != nil {
+			msg_error(err)
+		}
+
+		discoescritura.Close()
+
+		fmt.Println("")
+		fmt.Println("*               Particion montada con exito                *")
+		fmt.Println("")
+
+		miLista.ImprimirTabla()
 	} else if name_part4 == nombre_part {
-		fmt.Println("La particion a montar es la 4")
+		montado := string(discop.Mbr_partition_4.Part_status[:])
+		montado = strings.TrimRightFunc(montado, func(r rune) bool { return r == '\x00' })
+
+		if montado == "1" {
+			fmt.Println("¡¡ Error !! La particion ya se encuentra montada")
+			return
+		}
+		//fmt.Println("La particion a montar es la 4")
+
+		fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
+
+		fecha_mount := string(fecha_creacion)
+
+		type_part1 := string(particion[3].Part_type[:])
+		type_part1 = strings.TrimRightFunc(type_part1, func(r rune) bool { return r == '\x00' })
+
+		start_part1 := string(particion[3].Part_start[:])
+		start_part1 = strings.TrimRightFunc(start_part1, func(r rune) bool { return r == '\x00' })
+		int_start_part1, err := strconv.Atoi(start_part1)
+
+		size_part1 := string(particion[3].Part_size[:])
+		size_part1 = strings.TrimRightFunc(size_part1, func(r rune) bool { return r == '\x00' })
+		int_size_part1, err := strconv.Atoi(size_part1)
+
+		if err != nil {
+			msg_error(err)
+		}
+		string_Numero := strconv.Itoa(numeroAsignar)
+
+		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+
+		copy(discop.Mbr_partition_4.Part_status[:], "1")
+
+		//Apertura del archivo
+		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		if err != nil {
+			msg_error(err)
+		}
+
+		// Conversion de struct a bytes
+		ejmbyte4 := struct_to_bytes(discop)
+		// Cambio de posicion de puntero dentro del archivo
+		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		if err != nil {
+			msg_error(err)
+		}
+		// Escritura de struct en archivo binario
+		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		if err != nil {
+			msg_error(err)
+		}
+
+		discoescritura.Close()
+
+		fmt.Println("")
+		fmt.Println("*               Particion montada con exito                *")
+		fmt.Println("")
+
+		miLista.ImprimirTabla()
 	} else {
 		fmt.Println("¡¡ Error !! No se encontro una particion con ese nombre")
 		return
 	}
 
-	//fmt.Println("Llega al comando mount")
+}
+
+func comando_mkfs(commandArray []string) {
 
 }
 
@@ -1273,4 +1538,91 @@ func bytes_to_struct_ebr(s []byte) EBR {
 		msg_error(err)
 	}
 	return p
+}
+
+type ListaDobleEnlazada struct {
+	first *NodoMount
+	last  *NodoMount
+}
+
+func (lista *ListaDobleEnlazada) MontarP(id string, ruta string, nombreparticion string, tipoparticion string, inicioparticion int, tamanioparticion int, horamontado string, numerodisco int) (*NodoMount, error) {
+
+	nuevoNodo := &NodoMount{
+		id:               id,
+		ruta:             ruta,
+		nombreparticion:  nombreparticion,
+		tipoparticion:    tipoparticion,
+		inicioparticion:  inicioparticion,
+		tamanioparticion: tamanioparticion,
+		horamontado:      horamontado,
+		numerodisco:      numerodisco,
+		nextmount:        nil,
+		prevmount:        nil,
+	}
+
+	if lista.first == nil {
+		lista.first = nuevoNodo
+		lista.last = nuevoNodo
+	} else {
+		lista.last.nextmount = nuevoNodo
+		nuevoNodo.prevmount = lista.last
+		lista.last = nuevoNodo
+	}
+
+	return nuevoNodo, nil
+}
+
+func (lista *ListaDobleEnlazada) Imprimir() {
+	actual := lista.first
+	for actual != nil {
+		fmt.Printf("id: %s, ruta: %s, nombreparticion: %s, tipoparticion: %s, inicioparticion: %d, tamanioparticion: %d, horamontado: %s\n", actual.id, actual.ruta, actual.nombreparticion, actual.tipoparticion, actual.inicioparticion, actual.tamanioparticion, actual.horamontado)
+		actual = actual.nextmount
+	}
+}
+
+func (lista *ListaDobleEnlazada) ImprimirTabla() {
+	// Imprimir encabezado de la tabla
+	fmt.Println("Particiones Montadas actualmente")
+	fmt.Println("")
+	fmt.Printf("%-10s %-20s\n", "ID", "Hora Montado")
+	fmt.Println(strings.Repeat("-", 32))
+
+	// Recorrer todos los nodos de la lista
+	current := lista.first
+	for current != nil {
+		// Imprimir los datos correspondientes del nodo
+		fmt.Printf("%-10s %-20s\n", current.id, current.horamontado)
+
+		// Avanzar al siguiente nodo
+		current = current.nextmount
+	}
+}
+
+func (lista *ListaDobleEnlazada) EstaVacia() bool {
+	return lista.first == nil
+}
+
+func contarRutas(lista *ListaDobleEnlazada) int {
+	rutasDistintas := make(map[string]bool)
+
+	for nodo := lista.first; nodo != nil; nodo = nodo.nextmount {
+		ruta := nodo.ruta
+		rutasDistintas[ruta] = true
+	}
+
+	return len(rutasDistintas)
+}
+
+func obtenerNumeroRutas(lista *ListaDobleEnlazada) int {
+	contador := contarRutas(lista)
+	return contador
+}
+
+func (lista *ListaDobleEnlazada) buscarPorRuta(ruta string) int {
+	for nodo := lista.first; nodo != nil; nodo = nodo.nextmount {
+		if nodo.ruta == ruta {
+			return nodo.numerodisco
+		}
+	}
+	return 0
 }
