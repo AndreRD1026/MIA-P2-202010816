@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -18,19 +19,19 @@ import (
 )
 
 type Partition = struct {
-	Part_status [10]byte // Indica si la partición está activa o no
-	Part_type   [10]byte // Valores P o E
-	Part_fit    [10]byte // Indica el Ajuste [B]est, [F]irst o [W]orst
+	Part_status [1]byte  // Indica si la partición está activa o no
+	Part_type   [1]byte  // Valores P o E
+	Part_fit    [1]byte  // Indica el Ajuste [B]est, [F]irst o [W]orst
 	Part_start  [10]byte // Indica en qué byte del disco inicia la partición
 	Part_size   [10]byte // Contiene el tamaño total de la partición en bytes
-	Part_name   [20]byte // Nombre de la partición
+	Part_name   [16]byte // Nombre de la partición
 }
 
 type MBR = struct {
-	Mbr_tamano         [10]byte  // Tamanio del disco
-	Mbr_fecha_creacion [10]byte  // Fecha y hora de creacion del disco
-	Mbr_dsk_signature  [10]byte  // Numero random, identifica de forma unica a cada disco
-	Dsk_fit            [10]byte  // Ajuste de la particion [B]est, [F]irt o [W]orst
+	Mbr_tamano         [4]byte   // Tamanio del disco
+	Mbr_fecha_creacion [19]byte  // Fecha y hora de creacion del disco
+	Mbr_dsk_signature  [4]byte   // Numero random, identifica de forma unica a cada disco
+	Dsk_fit            [1]byte   // Ajuste de la particion [B]est, [F]irt o [W]orst
 	Mbr_partition_1    Partition // Estructura con información de la partición 1
 	Mbr_partition_2    Partition // Estructura con información de la partición 2
 	Mbr_partition_3    Partition // Estructura con información de la partición 3
@@ -38,23 +39,23 @@ type MBR = struct {
 }
 
 type EBR = struct {
-	Part_status [20]byte // Indica si esta activa o no
-	Part_fit    [20]byte // Indica el Ajuste [B]est, [F]irst o [W]orst
-	Part_start  [20]byte // Indica el byte donde inicia la particion
-	Part_size   [20]byte // Tamanio total de la particion
-	Part_next   [20]byte // Byte en el que está el próximo EBR. -1 si no hay siguiente
-	Part_name   [20]byte // Nombre de la particion
+	Part_status [1]byte  // Indica si esta activa o no
+	Part_fit    [1]byte  // Indica el Ajuste [B]est, [F]irst o [W]orst
+	Part_start  [4]byte  // Indica el byte donde inicia la particion
+	Part_size   [4]byte  // Tamanio total de la particion
+	Part_next   [4]byte  // Byte en el que está el próximo EBR. -1 si no hay siguiente
+	Part_name   [16]byte // Nombre de la particion
 }
 
 type SuperBloque = struct {
-	S_filesystem_type   [10]byte // Guarda el número que identifica el sistema de archivos utilizado
+	S_filesystem_type   [1]byte  // Guarda el número que identifica el sistema de archivos utilizado
 	S_inodes_count      [10]byte // Guarda el número total de inodos
 	S_blocks_count      [10]byte // Guarda el número total de bloques
 	S_free_blocks_count [10]byte // Contiene el número de bloques libres
 	S_free_inodes_count [10]byte // Contiene el número de inodos libres
-	S_mtime             [10]byte // Última fecha en el que el sistema fue montado
-	S_mnt_count         [10]byte // Indica cuantas veces se ha montado el sistema
-	S_magic             [10]byte // Valor que identifica al sistema de archivos, tendrá el valor 0xEF53
+	S_mtime             [19]byte // Última fecha en el que el sistema fue montado
+	S_mnt_count         [1]byte  // Indica cuantas veces se ha montado el sistema
+	S_magic             [6]byte  // Valor que identifica al sistema de archivos, tendrá el valor 0xEF53
 	S_inode_size        [10]byte // Tamaño del inodo
 	S_block_size        [10]byte // Tamaño del bloque
 	S_firts_ino         [10]byte // Primer inodo libre
@@ -66,15 +67,15 @@ type SuperBloque = struct {
 }
 
 type Inodos = struct {
-	I_uid   [10]byte // UID del usuario propietario del archivo o carpeta
-	I_gid   [10]byte // GID del grupo al que pertenece el archivo o carpeta.
-	I_size  [10]byte // Tamaño del archivo en bytes
-	I_atime [10]byte // Última fecha en que se leyó el inodo sin modificarlo
-	I_ctime [10]byte // Fecha en la que se creó el inodo
-	I_mtime [10]byte // Última fecha en la que se modifica el inodo
-	I_block [10]byte // Array en los que los primeros 16 registros son bloques directos.
-	I_type  [10]byte // indica si es archivo o carpeta. 1 = Archivo y 0 = Carpeta
-	I_perm  [10]byte // Guardará los permisos del archivo o carpeta.
+	I_uid   [4]byte  // UID del usuario propietario del archivo o carpeta
+	I_gid   [4]byte  // GID del grupo al que pertenece el archivo o carpeta.
+	I_size  [4]byte  // Tamaño del archivo en bytes
+	I_atime [19]byte // Última fecha en que se leyó el inodo sin modificarlo
+	I_ctime [19]byte // Fecha en la que se creó el inodo
+	I_mtime [19]byte // Última fecha en la que se modifica el inodo
+	I_block [4]byte  // Array en los que los primeros 16 registros son bloques directos.
+	I_type  [1]byte  // indica si es archivo o carpeta. 1 = Archivo y 0 = Carpeta
+	I_perm  [4]byte  // Guardará los permisos del archivo o carpeta.
 }
 
 type Content = struct {
@@ -88,6 +89,14 @@ type BloqueCarpetas = struct {
 
 type BloqueArchivos = struct {
 	B_content [10]byte // Array con el contenido del archivo
+}
+
+type BitMapInodo = struct {
+	Status [1]byte
+}
+
+type BitmapBloque = struct {
+	Status [1]byte
 }
 
 // Esto ayuda para el montaje de las particiones
@@ -169,14 +178,6 @@ func ejecucion_comando(commandArray []string) {
 	} else {
 		fmt.Println("Comando ingresado no es valido")
 	}
-	//else if data == "escribir" {
-	//	escribir(commandArray)
-	//} else if data == "mostrar" {
-	//	mostrar()
-	//} else if data == "registrox" {
-	//	registrox(commandArray)
-	//}
-
 }
 
 func comando_mkdisk(commandArray []string) {
@@ -245,8 +246,6 @@ func comando_mkdisk(commandArray []string) {
 	rand.Seed(time.Now().UnixNano())
 
 	dsk_s := rand.Intn(1000) + 1
-
-	//fmt.Println("Numero = ", dsk_s)
 
 	// Calculo de tamaño del archivo
 	if strings.Contains(dimensional, "k") || strings.Contains(dimensional, "K") {
@@ -390,8 +389,6 @@ func comando_rmdisk(commandArray []string) {
 		// }
 		if strings.Contains(data, ">path=") {
 			ruta = strings.Replace(data, ">path=", "", 1)
-			//ruta = data
-			//fmt.Println("Ahora? ", ruta)
 		}
 	}
 
@@ -540,17 +537,8 @@ func comando_fkdisk(commandArray []string) {
 		part_fit = "W"
 	}
 
-	//fmt.Println("Datos ")
-	//fmt.Println(tamano_part)
-	//fmt.Println(reflect.TypeOf(tamano_part))
-	//fmt.Println(part_unit)
-	//fmt.Println(rutaa)
-	//fmt.Println(part_type)
-	//fmt.Println(part_fit)
-	//fmt.Println(nombre_part)
-
 	fin_archivo := false
-	var emptymbr [10]byte
+	var emptymbr [4]byte
 	ejm_empty := MBR{}
 	// Apertura de archivo
 	disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
@@ -560,9 +548,6 @@ func comando_fkdisk(commandArray []string) {
 	// Calculo del tamano de struct en bytes
 
 	string_tamano := ""
-	//string_fecha := ""
-	//string_dsk := ""
-	//string_ajuste := ""
 	var solaa MBR
 
 	mbr2 := struct_to_bytes(ejm_empty)
@@ -585,28 +570,10 @@ func comando_fkdisk(commandArray []string) {
 		if mbr.Mbr_tamano == emptymbr {
 			fin_archivo = true
 		} else {
-			//fmt.Println("Sacando los datos del .dsk")
-			//fmt.Print(" Tamaño: ")
-			//fmt.Print(string(ejm.Mbr_tamano[:]))
 			string_tamano = string(mbr.Mbr_tamano[:])
-			//fmt.Print(" Fecha: ")
-			//fmt.Print(string(ejm.Mbr_fecha_creacion[:]))
-			//string_fecha = string(mbr.Mbr_fecha_creacion[:])
-			//fmt.Print(" DSK: ")
-			//fmt.Print(string(ejm.Mbr_dsk_signature[:]))
-			//string_dsk = string(mbr.Mbr_dsk_signature[:])
-			//fmt.Print(" Ajuste: ")
-			//fmt.Println(string(ejm.Dsk_fit[:]))
-			//string_ajuste = string(mbr.Dsk_fit[:])
 		}
 	}
 	disco.Close()
-
-	//fmt.Println(string_tamano)
-	//fmt.Println(reflect.TypeOf(string_tamano))
-	//fmt.Println(string_fecha)
-	//fmt.Println(string_dsk)
-	//fmt.Println(string_ajuste)
 
 	trimmed_string_tamano := strings.TrimRightFunc(string_tamano, func(r rune) bool { return r == '\x00' })
 	tamano, err := strconv.Atoi(trimmed_string_tamano)
@@ -625,9 +592,6 @@ func comando_fkdisk(commandArray []string) {
 	}
 
 	if tamano >= tamano_archivo1 {
-		//fmt.Println(tamano)
-		//fmt.Println(tamano_archivo1)
-		//fmt.Println("Hay espacio suficiente")
 
 		if part_type != "L" {
 
@@ -680,25 +644,20 @@ func comando_fkdisk(commandArray []string) {
 				if existetipo == "P" || existetipo == "E" {
 					switch i {
 					case 0:
-						discop.Mbr_partition_1.Part_status = [10]byte{'1'}
+						discop.Mbr_partition_1.Part_status = [1]byte{'1'}
 						//fmt.Println("Entra al 1")
 					case 1:
-						discop.Mbr_partition_2.Part_status = [10]byte{'1'}
+						discop.Mbr_partition_2.Part_status = [1]byte{'1'}
 						//fmt.Println("Entra al 2")
 					case 2:
-						discop.Mbr_partition_3.Part_status = [10]byte{'1'}
+						discop.Mbr_partition_3.Part_status = [1]byte{'1'}
 						//fmt.Println("Entra al 3")
 					case 3:
-						discop.Mbr_partition_4.Part_status = [10]byte{'1'}
+						discop.Mbr_partition_4.Part_status = [1]byte{'1'}
 						//fmt.Println("Entra al 4")
 					}
 				}
 			}
-
-			fmt.Println("Aver ", string(discop.Mbr_partition_1.Part_status[:]))
-			fmt.Println("Aver2 ", string(discop.Mbr_partition_2.Part_status[:]))
-			fmt.Println("Aver3 ", string(discop.Mbr_partition_3.Part_status[:]))
-			fmt.Println("Aver4 ", string(discop.Mbr_partition_4.Part_status[:]))
 
 			str_prueba := string(discop.Mbr_partition_1.Part_status[:])
 			str_prueba1 := string(discop.Mbr_partition_2.Part_status[:])
@@ -766,10 +725,10 @@ func comando_fkdisk(commandArray []string) {
 					// Manejo del error
 				}
 				tamanoDisponibleAntes1 := tamano - partSizeInt
-				fmt.Println("Tamano disponible? ", tamanoDisponibleAntes1)
-				fmt.Println("Tamano a asignar ", tamano_archivo1)
-				resta := tamanoDisponibleAntes1 - tamano_archivo1
-				fmt.Println("Resta ", resta)
+				// fmt.Println("Tamano disponible? ", tamanoDisponibleAntes1)
+				// fmt.Println("Tamano a asignar ", tamano_archivo1)
+				// resta := tamanoDisponibleAntes1 - tamano_archivo1
+				// fmt.Println("Resta ", resta)
 				if tamanoDisponibleAntes1 >= tamano_archivo1 {
 					//fmt.Println("Si hay espacio para la particion")
 					copy(discop.Mbr_partition_1.Part_status[:], "0")
@@ -782,7 +741,7 @@ func comando_fkdisk(commandArray []string) {
 					startt := intprueba + pruebainicio + 1
 					//startt := intprueba + partSizeInt + 1
 					fmt.Println("Inicio? ", intprueba)
-					fmt.Println("Size? ", partSizeInt)
+					// fmt.Println("Size? ", partSizeInt)
 					fmt.Println("Start? ", startt)
 					copy(discop.Mbr_partition_2.Part_start[:], strconv.Itoa(startt))
 					//disco.mbr_partition_2.part_start = (disco.mbr_partition_1.part_start + disco.mbr_partition_1.part_s + 1);
@@ -831,10 +790,10 @@ func comando_fkdisk(commandArray []string) {
 					// Manejo del error
 				}
 				tamanoDisponibleAntes1 := tamano - (partSizeInt + partSizeInt1)
-				fmt.Println("Tamano disponible? ", tamanoDisponibleAntes1)
-				fmt.Println("Tamano a asignar ", tamano_archivo1)
-				resta := tamanoDisponibleAntes1 - tamano_archivo1
-				fmt.Println("Resta ", resta)
+				// fmt.Println("Tamano disponible? ", tamanoDisponibleAntes1)
+				// fmt.Println("Tamano a asignar ", tamano_archivo1)
+				// resta := tamanoDisponibleAntes1 - tamano_archivo1
+				// fmt.Println("Resta ", resta)
 				if tamanoDisponibleAntes1 >= tamano_archivo1 {
 					//fmt.Println("Si hay espacio para la particion")
 					copy(discop.Mbr_partition_1.Part_status[:], "0")
@@ -846,9 +805,9 @@ func comando_fkdisk(commandArray []string) {
 					unaprueba = strings.TrimRightFunc(unaprueba, func(r rune) bool { return r == '\x00' })
 					intprueba, err := strconv.Atoi(unaprueba)
 					startt := intprueba + pruebainicio + 1
-					fmt.Println("Inicio? ", intprueba)
-					fmt.Println("Size? ", partSizeInt)
-					fmt.Println("Start? ", startt)
+					// fmt.Println("Inicio? ", intprueba)
+					// fmt.Println("Size? ", partSizeInt)
+					// fmt.Println("Start? ", startt)
 					copy(discop.Mbr_partition_3.Part_start[:], strconv.Itoa(startt))
 					copy(discop.Mbr_partition_3.Part_size[:], strconv.Itoa(tamano_archivo1))
 					copy(discop.Mbr_partition_3.Part_name[:], nombre_part)
@@ -897,10 +856,10 @@ func comando_fkdisk(commandArray []string) {
 					// Manejo del error
 				}
 				tamanoDisponibleAntes1 := tamano - (partSizeInt + partSizeInt1 + partSizeInt2)
-				fmt.Println("Tamano disponible? ", tamanoDisponibleAntes1)
-				fmt.Println("Tamano a asignar ", tamano_archivo1)
-				resta := tamanoDisponibleAntes1 - tamano_archivo1
-				fmt.Println("Resta ", resta)
+				// fmt.Println("Tamano disponible? ", tamanoDisponibleAntes1)
+				// fmt.Println("Tamano a asignar ", tamano_archivo1)
+				// resta := tamanoDisponibleAntes1 - tamano_archivo1
+				// fmt.Println("Resta ", resta)
 				if tamanoDisponibleAntes1 >= tamano_archivo1 {
 					//fmt.Println("Si hay espacio para la particion")
 					copy(discop.Mbr_partition_1.Part_status[:], "0")
@@ -913,9 +872,9 @@ func comando_fkdisk(commandArray []string) {
 					unaprueba = strings.TrimRightFunc(unaprueba, func(r rune) bool { return r == '\x00' })
 					intprueba, err := strconv.Atoi(unaprueba)
 					startt := intprueba + pruebainicio + 1
-					fmt.Println("Inicio? ", intprueba)
-					fmt.Println("Size? ", partSizeInt)
-					fmt.Println("Start? ", startt)
+					// fmt.Println("Inicio? ", intprueba)
+					// fmt.Println("Size? ", partSizeInt)
+					// fmt.Println("Start? ", startt)
 					copy(discop.Mbr_partition_4.Part_start[:], strconv.Itoa(startt))
 					copy(discop.Mbr_partition_4.Part_size[:], strconv.Itoa(tamano_archivo1))
 					copy(discop.Mbr_partition_4.Part_name[:], nombre_part)
@@ -1144,22 +1103,8 @@ func comando_fkdisk(commandArray []string) {
 }
 
 func comando_mount(commandArray []string) {
-	// tamano_parti := ""
-	// straux := ""
-	// unidad := ""
-	// tamano_parti := ""
-	// straux := ""
-	// tamano_part := 0
-	// tamano_archivo1 := 0
 	rutaa := ""
-
-	//numeroparticion := ""
-
-	// tipo_part := ""
-	// ajuste_part := ""
 	nombre_part := ""
-	// tamano_part := 0
-	// tamano_archivo1 := 0
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
@@ -1170,8 +1115,6 @@ func comando_mount(commandArray []string) {
 
 		if strings.Contains(data, ">path=") {
 			rutaa = strings.Replace(data, ">path=", "", 1)
-			//ruta = data
-			//fmt.Println("Ahora? ", ruta)
 		} else if strings.Contains(data, ">name=") {
 			nombre_part = strings.Replace(data, ">name=", "", 1)
 		}
@@ -1190,7 +1133,7 @@ func comando_mount(commandArray []string) {
 	}
 
 	fin_archivo := false
-	var emptymbr [10]byte
+	var emptymbr [4]byte
 	ejm_empty := MBR{}
 	// Apertura de archivo
 	disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
@@ -1567,8 +1510,6 @@ func comando_mkfs(commandArray []string) {
 			id_buscar = straux
 		} else if strings.Contains(data, ">type=") {
 			type_part = strings.Replace(data, ">type=", "", 1)
-			//ruta = data
-			//fmt.Println("Ahora? ", ruta)
 		}
 	}
 
@@ -1627,10 +1568,192 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 	fmt.Println("Esto es n ", n)
 
 	// Se crea el SuperBloque
+
+	// SuperBloque SP;
+	//     SP.s_filesystem_type = 3; // Formato EXT3
+	//     SP.s_inodes_count = n;
+	//     SP.s_blocks_count = 3*n;
+	//     SP.s_free_blocks_count = 3*n-2;
+	//     SP.s_free_inodes_count = n-2;
+	//     SP.s_mtime = (actual->horamontado);
+	//     SP.s_umtime = (actual->horamontado);
+	//     SP.s_mnt_count = 1;
+	//     SP.s_magic = 0XEF53;
+	//     SP.s_inode_s = sizeof(Inodos);
+	//     SP.s_block_s = sizeof(BloqueCarpeta);
+	// SP.s_firts_ino = (actual->inicioparticion + sizeof(SuperBloque) +  3* n + n); // Es la suma del SuperBloque + BitmapInodos + BitmapBloques
+	// SP.s_first_blo = SP.s_firts_ino + n * sizeof(Inodos); // Es la suma del primer Primer Inodo Libre + el tamaño de Inodos
+	// SP.s_bm_inode_start = actual->inicioparticion + sizeof(SuperBloque); // Es la suma del Inicio de la particion + tamaño del SuperBloque
+	// SP.s_bm_block_start = SP.s_bm_inode_start + n; // Es la suma de donde empieza el BitmapInodos + tamaño de Inodos
+	// SP.s_inode_start = SP.s_firts_ino; // Es el primer Inodo libre
+	// SP.s_block_start = SP.s_inode_start + n *sizeof(Inodos); // Es el primer Bloque libre
+
+	//     Escribir_SuperBloque(actual->ruta, SP, actual->inicioparticion);
+
+	SP := SuperBloque{}
+	pruebaI := Inodos{}
+	BloqueC := BloqueCarpetas{}
+	size := unsafe.Sizeof(SP)
+	size_Inode := unsafe.Sizeof(pruebaI)
+	size_BloqueC := unsafe.Sizeof(BloqueC)
+	horamontado := nodoActual.horamontado
+	magic := "0XEF53"
+	first_in := nodoActual.inicioparticion + int(size) + 3*n + n
+	first_blo := int(binary.LittleEndian.Uint32(SP.S_firts_ino[:])) + n*int(size_Inode)
+	bm_inode_start := nodoActual.inicioparticion + int(size)
+	bm_block_start := int(binary.LittleEndian.Uint32(SP.S_bm_inode_start[:])) + n
+	inode_star := int(binary.LittleEndian.Uint32(SP.S_firts_ino[:]))
+	block_start := int(binary.LittleEndian.Uint32(SP.S_inode_start[:])) + n*int(size_Inode)
+	copy(SP.S_filesystem_type[:], strconv.Itoa(2))
+	copy(SP.S_inodes_count[:], strconv.Itoa(n))
+	copy(SP.S_blocks_count[:], strconv.Itoa(3*n))
+	copy(SP.S_free_blocks_count[:], strconv.Itoa(3*n-2))
+	copy(SP.S_free_inodes_count[:], strconv.Itoa(n-2))
+	copy(SP.S_mtime[:], horamontado)
+	copy(SP.S_mnt_count[:], strconv.Itoa(1))
+	copy(SP.S_magic[:], magic)
+	copy(SP.S_inode_size[:], strconv.Itoa(int(size_Inode)))
+	copy(SP.S_block_size[:], strconv.Itoa(int(size_BloqueC)))
+	copy(SP.S_firts_ino[:], strconv.Itoa(first_in))
+	copy(SP.S_first_blo[:], strconv.Itoa(first_blo))
+	copy(SP.S_bm_inode_start[:], strconv.Itoa(bm_inode_start))
+	copy(SP.S_bm_block_start[:], strconv.Itoa(bm_block_start))
+	copy(SP.S_inode_start[:], strconv.Itoa(inode_star))
+	copy(SP.S_block_start[:], strconv.Itoa(block_start))
+
+	Escribir_SuperBloque(nodoActual.ruta, SP, nodoActual.inicioparticion)
+
+	//Se crea el Bitmap de Inodos
+
+	bmInodo := make([]BitMapInodo, n)
+	siguientes := BitMapInodo{Status: [1]byte{'0'}}
+
+	bmInodo[0].Status = [1]byte{'1'}
+	bmInodo[1].Status = [1]byte{'1'}
+
+	for i := 2; i < n; i++ {
+		bmInodo[i] = siguientes
+	}
+
+	counter := 0
+	for i := 0; i < n; i++ {
+		fmt.Print(string(bmInodo[i].Status[:]), " ")
+		counter++
+		if counter == 20 {
+			fmt.Println()
+			counter = 0
+		}
+	}
+	if counter != 0 {
+		fmt.Println()
+	}
+
+	//Se crea el Bitmap de Bloques
+
+	fmt.Println("Se crean los de Bloque")
+
+	bmBloque := make([]BitmapBloque, n*3)
+	siguientes_bloque := BitmapBloque{Status: [1]byte{'0'}}
+
+	bmBloque[0].Status = [1]byte{'1'}
+	bmBloque[1].Status = [1]byte{'1'}
+
+	for i := 2; i < n; i++ {
+		bmBloque[i] = siguientes_bloque
+	}
+
+	counter1 := 0
+	for i := 0; i < n; i++ {
+		fmt.Print(string(bmBloque[i].Status[:]), " ")
+		counter1++
+		if counter1 == 20 {
+			fmt.Println()
+			counter1 = 0
+		}
+	}
+	if counter1 != 0 {
+		fmt.Println()
+	}
+
+	// Se crean manualmente los primeros Inodos
+
+	// Predeterminado[0].i_block[0] = 0;
+	// Predeterminado[0].i_type = '0';
+	// Predeterminado[0].i_perm = 664;
+
+	// I_block [10]byte // Array en los que los primeros 16 registros son bloques directos.
+	// I_type  [10]byte // indica si es archivo o carpeta. 1 = Archivo y 0 = Carpeta
+	// I_perm  [10]byte // Guardará los permisos del archivo o carpeta.
+
+	fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
+	fecha_atime := string(fecha_creacion)
+	//avr := ""
+
+	// var avr string = "abcdefghij"
+	var fechaBytes [19]byte
+
+	// // Convertir la cadena en un array de bytes de longitud 10
+	copy(fechaBytes[:], []byte(fecha_atime))
+
+	Predeterminado := make([]Inodos, 2)
+	Predeterminado[0].I_uid = [4]byte{'1'}
+	Predeterminado[0].I_gid = [4]byte{'1'}
+	Predeterminado[0].I_atime = fechaBytes
+	Predeterminado[0].I_ctime = fechaBytes
+	Predeterminado[0].I_mtime = fechaBytes
+	Predeterminado[0].I_block = [4]byte{'0'}
+	Predeterminado[0].I_type = [1]byte{'0'}
+	Predeterminado[0].I_perm = [4]byte{'0'}
+
+	uidBytes := Predeterminado[0].I_uid[:]
+	gidBytes := Predeterminado[0].I_gid[:]
+	atimeBytes := Predeterminado[0].I_atime[:]
+	ctimeBytes := Predeterminado[0].I_ctime[:]
+	mtimeBytes := Predeterminado[0].I_mtime[:]
+	blockBytes := Predeterminado[0].I_block[:]
+	typeBytes := Predeterminado[0].I_type[:]
+	permBytes := Predeterminado[0].I_perm[:]
+
+	// Copiar los bytes en el slice de destino utilizando el método copy()
+	copy(uidBytes, []byte("1"))
+	copy(gidBytes, []byte("1"))
+	copy(atimeBytes, []byte(fecha_atime))
+	copy(ctimeBytes, []byte(fecha_atime))
+	copy(mtimeBytes, []byte(fecha_atime))
+	copy(blockBytes, []byte("0"))
+	copy(typeBytes, []byte("0"))
+	copy(permBytes, []byte("0"))
+
 }
 
 func Escribir_SuperBloque(path string, SB SuperBloque, inicioP int) {
 
+	// Apertura del archivo
+	discoescritura, err := os.OpenFile(path, os.O_RDWR, 0660)
+	if err != nil {
+		msg_error(err)
+	}
+
+	// Conversion de struct a bytes
+	// PruebaSeek := MBR{}
+	// otroo := unsafe.Sizeof(PruebaSeek)
+	// prueba := unsafe.Sizeof(SB)
+	// sumas := otroo + prueba
+	ejmbyte := struct_to_bytes(SB)
+	// Cambio de posicion de puntero dentro del archivo
+	newpos, err := discoescritura.Seek(int64(1000), os.SEEK_CUR)
+	if err != nil {
+		msg_error(err)
+	}
+	// Escritura de struct en archivo binario
+	_, err = discoescritura.WriteAt(ejmbyte, newpos)
+	if err != nil {
+		msg_error(err)
+	}
+
+	discoescritura.Close()
+
+	fmt.Println("Prueba ?")
 }
 
 func struct_to_bytes(p interface{}) []byte {
