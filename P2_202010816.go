@@ -19,12 +19,12 @@ import (
 )
 
 type Partition = struct {
-	Part_status [1]byte  // Indica si la partición está activa o no
-	Part_type   [1]byte  // Valores P o E
-	Part_fit    [1]byte  // Indica el Ajuste [B]est, [F]irst o [W]orst
-	Part_start  [10]byte // Indica en qué byte del disco inicia la partición
-	Part_size   [10]byte // Contiene el tamaño total de la partición en bytes
-	Part_name   [16]byte // Nombre de la partición
+	Part_status [1]byte   // Indica si la partición está activa o no
+	Part_type   [100]byte // Valores P o E
+	Part_fit    [100]byte // Indica el Ajuste [B]est, [F]irst o [W]orst
+	Part_start  [100]byte // Indica en qué byte del disco inicia la partición
+	Part_size   [100]byte // Contiene el tamaño total de la partición en bytes
+	Part_name   [160]byte // Nombre de la partición
 }
 
 type MBR = struct {
@@ -366,6 +366,22 @@ func comando_mkdisk(commandArray []string) {
 		msg_error(err)
 	}
 
+	// file, err := os.OpenFile(ruta, os.O_RDWR, 0644)
+	// if err != nil {
+	// 	fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+	// 	return
+	// }
+	// defer file.Close()
+
+	// if _, err := file.Seek(int64(0), 0); err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// if err := binary.Write(file, binary.LittleEndian, &Disco); err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+
 	disco.Close()
 
 	// cout << "" << endl;
@@ -536,6 +552,8 @@ func comando_fkdisk(commandArray []string) {
 	} else if strings.Contains(ajuste_part, "") {
 		part_fit = "W"
 	}
+
+	//verDisco(rutaa)
 
 	fin_archivo := false
 	var emptymbr [4]byte
@@ -1531,11 +1549,8 @@ func comando_mkfs(commandArray []string) {
 	}
 
 	if tipo_formateo == "full" {
-		fmt.Println("Entra al if para validar")
 		existe, nodo := miLista.buscarPorID(id_buscar)
 		if existe {
-			fmt.Println("Se encontró el nodo con id", nodo.id, " + ", nodo.nombreparticion, " + ", nodo.ruta)
-
 			//Empieza lo chido del EXT2 DX
 
 			partb := nodo.tamanioparticion * 1024 // tamaño del bloque en bytes
@@ -1564,32 +1579,8 @@ func comando_mkfs(commandArray []string) {
 }
 
 func crear_EXT2(nodoActual *NodoMount, n int) {
-	fmt.Println("Esto es en EXT2 ", nodoActual.nombreparticion, " + ", nodoActual.id, " + ", nodoActual.ruta)
-	fmt.Println("Esto es n ", n)
 
 	// Se crea el SuperBloque
-
-	// SuperBloque SP;
-	//     SP.s_filesystem_type = 3; // Formato EXT3
-	//     SP.s_inodes_count = n;
-	//     SP.s_blocks_count = 3*n;
-	//     SP.s_free_blocks_count = 3*n-2;
-	//     SP.s_free_inodes_count = n-2;
-	//     SP.s_mtime = (actual->horamontado);
-	//     SP.s_umtime = (actual->horamontado);
-	//     SP.s_mnt_count = 1;
-	//     SP.s_magic = 0XEF53;
-	//     SP.s_inode_s = sizeof(Inodos);
-	//     SP.s_block_s = sizeof(BloqueCarpeta);
-	// SP.s_firts_ino = (actual->inicioparticion + sizeof(SuperBloque) +  3* n + n); // Es la suma del SuperBloque + BitmapInodos + BitmapBloques
-	// SP.s_first_blo = SP.s_firts_ino + n * sizeof(Inodos); // Es la suma del primer Primer Inodo Libre + el tamaño de Inodos
-	// SP.s_bm_inode_start = actual->inicioparticion + sizeof(SuperBloque); // Es la suma del Inicio de la particion + tamaño del SuperBloque
-	// SP.s_bm_block_start = SP.s_bm_inode_start + n; // Es la suma de donde empieza el BitmapInodos + tamaño de Inodos
-	// SP.s_inode_start = SP.s_firts_ino; // Es el primer Inodo libre
-	// SP.s_block_start = SP.s_inode_start + n *sizeof(Inodos); // Es el primer Bloque libre
-
-	//     Escribir_SuperBloque(actual->ruta, SP, actual->inicioparticion);
-
 	SP := SuperBloque{}
 	pruebaI := Inodos{}
 	BloqueC := BloqueCarpetas{}
@@ -1635,18 +1626,21 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 		bmInodo[i] = siguientes
 	}
 
-	counter := 0
-	for i := 0; i < n; i++ {
-		fmt.Print(string(bmInodo[i].Status[:]), " ")
-		counter++
-		if counter == 20 {
-			fmt.Println()
-			counter = 0
-		}
-	}
-	if counter != 0 {
-		fmt.Println()
-	}
+	verSB(nodoActual.ruta, nodoActual.inicioparticion)
+	EscribirBitMapInodos(nodoActual.ruta, bmInodo, int64(nodoActual.inicioparticion), n)
+
+	// counter := 0
+	// for i := 0; i < n; i++ {
+	// 	fmt.Print(string(bmInodo[i].Status[:]), " ")
+	// 	counter++
+	// 	if counter == 20 {
+	// 		fmt.Println()
+	// 		counter = 0
+	// 	}
+	// }
+	// if counter != 0 {
+	// 	fmt.Println()
+	// }
 
 	//Se crea el Bitmap de Bloques
 
@@ -1662,18 +1656,18 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 		bmBloque[i] = siguientes_bloque
 	}
 
-	counter1 := 0
-	for i := 0; i < n; i++ {
-		fmt.Print(string(bmBloque[i].Status[:]), " ")
-		counter1++
-		if counter1 == 20 {
-			fmt.Println()
-			counter1 = 0
-		}
-	}
-	if counter1 != 0 {
-		fmt.Println()
-	}
+	// counter1 := 0
+	// for i := 0; i < n; i++ {
+	// 	fmt.Print(string(bmBloque[i].Status[:]), " ")
+	// 	counter1++
+	// 	if counter1 == 20 {
+	// 		fmt.Println()
+	// 		counter1 = 0
+	// 	}
+	// }
+	// if counter1 != 0 {
+	// 	fmt.Println()
+	// }
 
 	// Se crean manualmente los primeros Inodos
 
@@ -1729,31 +1723,175 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 func Escribir_SuperBloque(path string, SB SuperBloque, inicioP int) {
 
 	// Apertura del archivo
-	discoescritura, err := os.OpenFile(path, os.O_RDWR, 0660)
-	if err != nil {
-		msg_error(err)
-	}
+	// discoescritura, err := os.OpenFile(path, os.O_RDWR, 0660)
+	// if err != nil {
+	// 	msg_error(err)
+	// }
 
 	// Conversion de struct a bytes
-	// PruebaSeek := MBR{}
-	// otroo := unsafe.Sizeof(PruebaSeek)
-	// prueba := unsafe.Sizeof(SB)
-	// sumas := otroo + prueba
-	ejmbyte := struct_to_bytes(SB)
-	// Cambio de posicion de puntero dentro del archivo
-	newpos, err := discoescritura.Seek(int64(1000), os.SEEK_CUR)
+	PruebaSeek := MBR{}
+	Part_si := Partition{}
+	Tam_EBR := EBR{}
+	otroo := unsafe.Sizeof(PruebaSeek)
+	Part_size := unsafe.Sizeof(Part_si)
+	EBR_Size := unsafe.Sizeof(Tam_EBR)
+	fmt.Println("MBR ? ", otroo)
+	prueba := unsafe.Sizeof(SB)
+	fmt.Println("SB ", prueba)
+	sumas := otroo + prueba
+	fmt.Println("Suma ", sumas)
+	fmt.Println("Inicio ", strconv.Itoa(inicioP))
+
+	suma2 := inicioP + int(otroo) + int(otroo) + int(Part_size) + int(Part_size) + int(EBR_Size) + int(EBR_Size) + int(prueba)
+
+	fmt.Println("Que sale en suma ", suma2)
+
+	// ejmbyte := struct_to_bytes(SB)
+	// ppp := len(ejmbyte)
+	// fmt.Println("Que sale? ", ppp)
+	// // Cambio de posicion de puntero dentro del archivo
+	// newpos, err := discoescritura.Seek(int64(otroo), os.SEEK_SET)
+	// if err != nil {
+	// 	msg_error(err)
+	// }
+	// // Escritura de struct en archivo binario
+	// _, err = discoescritura.WriteAt(ejmbyte, newpos)
+	// if err != nil {
+	// 	msg_error(err)
+	// }
+
+	// discoescritura.Close()
+
+	// file, err := os.OpenFile(path, os.O_RDWR, 0644)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// defer file.Close()
+
+	// offset := int64(inicioP)
+	// if _, err := file.Seek(offset, 0); err != nil {
+	// 	fmt.Println(err)
+	// }
+	// if err := binary.Write(file, binary.LittleEndian, &SB); err != nil {
+	// 	fmt.Println(err)
+	// }
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
-		msg_error(err)
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
 	}
-	// Escritura de struct en archivo binario
-	_, err = discoescritura.WriteAt(ejmbyte, newpos)
-	if err != nil {
-		msg_error(err)
+	defer file.Close()
+
+	if _, err := file.Seek(int64(inicioP), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err := binary.Write(file, binary.LittleEndian, &SB); err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	discoescritura.Close()
+}
 
-	fmt.Println("Prueba ?")
+func verDisco(path string) {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(0), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var PurbeaD MBR
+	if err := binary.Read(file, binary.LittleEndian, &PurbeaD); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fsType := string(bytes.TrimRight(PurbeaD.Dsk_fit[:], string(0)))
+	fsType1 := string(bytes.TrimRight(PurbeaD.Mbr_dsk_signature[:], string(0)))
+	fsType2 := string(bytes.TrimRight(PurbeaD.Mbr_fecha_creacion[:], string(0)))
+	fsType3 := string(bytes.TrimRight(PurbeaD.Mbr_tamano[:], string(0)))
+	fmt.Println("AJuste", fsType)
+	fmt.Println("dsk", fsType1)
+	fmt.Println("Fecha", fsType2)
+	fmt.Println("Tam : ", fsType3)
+
+	return
+}
+
+func verSB(path string, inicioP int) {
+
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(inicioP), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var SB SuperBloque
+	if err := binary.Read(file, binary.LittleEndian, &SB); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fsType := string(bytes.TrimRight(SB.S_filesystem_type[:], string(0)))
+	fsType1 := string(bytes.TrimRight(SB.S_mtime[:], string(0)))
+	fsType2 := string(bytes.TrimRight(SB.S_magic[:], string(0)))
+	fmt.Println(fsType)
+	fmt.Println(fsType1)
+	fmt.Println(fsType2)
+}
+
+func EscribirBitMapInodos(path string, bmInodo []BitMapInodo, inicio int64, n int) error {
+
+	PruebaSeek := MBR{}
+	Part_si := Partition{}
+	Tam_EBR := EBR{}
+	SB := SuperBloque{}
+	otroo := unsafe.Sizeof(PruebaSeek)
+	Part_size := unsafe.Sizeof(Part_si)
+	EBR_Size := unsafe.Sizeof(Tam_EBR)
+	fmt.Println("MBR ? ", otroo)
+	prueba := unsafe.Sizeof(SB)
+	fmt.Println("SB ", prueba)
+	sumas := otroo + prueba
+	fmt.Println("Suma ", sumas)
+
+	fmt.Println("Inicio ", strconv.Itoa(int(inicio)))
+
+	suma2 := int(inicio) + int(otroo) + int(otroo) + int(Part_size) + int(Part_size) + int(EBR_Size) + int(EBR_Size) + int(prueba) + int(prueba) + int(2*prueba)
+
+	fmt.Println("Inicio ? ", suma2)
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	for i := 0; i < n; i++ {
+		offset := int64(inicio) + int64(i)*int64(binary.Size(BitMapInodo{}))
+		offset1 := offset + int64(prueba)
+		if _, err := file.Seek(offset1, 0); err != nil {
+			return err
+		}
+		if err := binary.Write(file, binary.LittleEndian, &bmInodo[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func struct_to_bytes(p interface{}) []byte {
@@ -1781,6 +1919,17 @@ func bytes_to_struct_mbr(s []byte) MBR {
 func bytes_to_struct_ebr(s []byte) EBR {
 	// Decodificacion de [] Bytes a Struct ejemplo
 	p := EBR{}
+	dec := gob.NewDecoder(bytes.NewReader(s))
+	err := dec.Decode(&p)
+	if err != nil && err != io.EOF {
+		msg_error(err)
+	}
+	return p
+}
+
+func bytes_to_struct_SB(s []byte) SuperBloque {
+	// Decodificacion de [] Bytes a Struct ejemplo
+	p := SuperBloque{}
 	dec := gob.NewDecoder(bytes.NewReader(s))
 	err := dec.Decode(&p)
 	if err != nil && err != io.EOF {
@@ -1884,3 +2033,26 @@ func (lista *ListaDobleEnlazada) buscarPorID(id string) (bool, *NodoMount) {
 	}
 	return false, nil
 }
+
+// func probando(path string) {
+// 	archivo, err := os.OpenFile(path, os.O_RDWR, 0666)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return
+// 	}
+// 	defer archivo.Close()
+
+// 	_, err = archivo.Seek(0, io.SeekEnd)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return
+// 	}
+
+// 	posicion, err := archivo.Offset()
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return
+// 	}
+
+// 	fmt.Printf("La última posición con información escrita es %d\n", posicion)
+// }
