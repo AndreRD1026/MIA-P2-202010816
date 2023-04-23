@@ -19,12 +19,12 @@ import (
 )
 
 type Partition = struct {
-	Part_status [1]byte   // Indica si la partición está activa o no
-	Part_type   [100]byte // Valores P o E
-	Part_fit    [100]byte // Indica el Ajuste [B]est, [F]irst o [W]orst
-	Part_start  [100]byte // Indica en qué byte del disco inicia la partición
-	Part_size   [100]byte // Contiene el tamaño total de la partición en bytes
-	Part_name   [160]byte // Nombre de la partición
+	Part_status [1]byte  // Indica si la partición está activa o no
+	Part_type   [1]byte  // Valores P o E
+	Part_fit    [1]byte  // Indica el Ajuste [B]est, [F]irst o [W]orst
+	Part_start  [6]byte  // Indica en qué byte del disco inicia la partición
+	Part_size   [6]byte  // Contiene el tamaño total de la partición en bytes
+	Part_name   [16]byte // Nombre de la partición
 }
 
 type MBR = struct {
@@ -175,6 +175,8 @@ func ejecucion_comando(commandArray []string) {
 		comando_mount(commandArray)
 	} else if data == "mkfs" {
 		comando_mkfs(commandArray)
+	} else if data == "execute" {
+		comando_execute(commandArray)
 	} else {
 		fmt.Println("Comando ingresado no es valido")
 	}
@@ -353,34 +355,34 @@ func comando_mkdisk(commandArray []string) {
 	copy(Disco.Mbr_partition_3.Part_name[:], "")
 	copy(Disco.Mbr_partition_4.Part_name[:], "")
 
-	// Conversion de struct a bytes
-	ejmbyte := struct_to_bytes(Disco)
-	// Cambio de posicion de puntero dentro del archivo
-	newpos, err := disco.Seek(0, os.SEEK_SET)
-	if err != nil {
-		msg_error(err)
-	}
-	// Escritura de struct en archivo binario
-	_, err = disco.WriteAt(ejmbyte, newpos)
-	if err != nil {
-		msg_error(err)
-	}
-
-	// file, err := os.OpenFile(ruta, os.O_RDWR, 0644)
+	// // Conversion de struct a bytes
+	// ejmbyte := struct_to_bytes(Disco)
+	// // Cambio de posicion de puntero dentro del archivo
+	// newpos, err := disco.Seek(0, os.SEEK_SET)
 	// if err != nil {
-	// 	fmt.Println("¡¡ Error !! No se pudo acceder al disco")
-	// 	return
+	// 	msg_error(err)
 	// }
-	// defer file.Close()
+	// // Escritura de struct en archivo binario
+	// _, err = disco.WriteAt(ejmbyte, newpos)
+	// if err != nil {
+	// 	msg_error(err)
+	// }
 
-	// if _, err := file.Seek(int64(0), 0); err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// if err := binary.Write(file, binary.LittleEndian, &Disco); err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
+	file, err := os.OpenFile(ruta, os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(0), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err := binary.Write(file, binary.LittleEndian, &Disco); err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	disco.Close()
 
@@ -553,45 +555,72 @@ func comando_fkdisk(commandArray []string) {
 		part_fit = "W"
 	}
 
+	file, err := os.OpenFile(rutaa, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(0), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var PurbeaD MBR
+	if err := binary.Read(file, binary.LittleEndian, &PurbeaD); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fsType := string(bytes.TrimRight(PurbeaD.Dsk_fit[:], string(0)))
+	fsType1 := string(bytes.TrimRight(PurbeaD.Mbr_dsk_signature[:], string(0)))
+	fsType2 := string(bytes.TrimRight(PurbeaD.Mbr_fecha_creacion[:], string(0)))
+	string_tamano := string(bytes.TrimRight(PurbeaD.Mbr_tamano[:], string(0)))
+	fmt.Println("AJuste", fsType)
+	fmt.Println("dsk", fsType1)
+	fmt.Println("Fecha", fsType2)
+	fmt.Println("Tam : ", string_tamano)
+
 	//verDisco(rutaa)
 
-	fin_archivo := false
-	var emptymbr [4]byte
-	ejm_empty := MBR{}
-	// Apertura de archivo
-	disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-	if err != nil {
-		msg_error(err)
-	}
-	// Calculo del tamano de struct en bytes
+	// fin_archivo := false
+	// var emptymbr [4]byte
+	// ejm_empty := MBR{}
+	// // Apertura de archivo
+	// disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+	// if err != nil {
+	// 	msg_error(err)
+	// }
+	// // Calculo del tamano de struct en bytes
 
-	string_tamano := ""
-	var solaa MBR
+	// string_tamano := ""
+	// var solaa MBR
 
-	mbr2 := struct_to_bytes(ejm_empty)
-	sstruct := len(mbr2)
-	if !fin_archivo {
-		// Lectrura de conjunto de bytes en archivo binario
-		lectura := make([]byte, sstruct)
-		_, err = disco.ReadAt(lectura, 0)
-		if err != nil && err != io.EOF {
-			msg_error(err)
-		}
-		// Conversion de bytes a struct
-		mbr := bytes_to_struct_mbr(lectura)
+	// mbr2 := struct_to_bytes(ejm_empty)
+	// sstruct := len(mbr2)
+	// if !fin_archivo {
+	// 	// Lectrura de conjunto de bytes en archivo binario
+	// 	lectura := make([]byte, sstruct)
+	// 	_, err = disco.ReadAt(lectura, 0)
+	// 	if err != nil && err != io.EOF {
+	// 		msg_error(err)
+	// 	}
+	// 	// Conversion de bytes a struct
+	// 	mbr := bytes_to_struct_mbr(lectura)
 
-		solaa = mbr
-		sstruct = len(lectura)
-		if err != nil {
-			msg_error(err)
-		}
-		if mbr.Mbr_tamano == emptymbr {
-			fin_archivo = true
-		} else {
-			string_tamano = string(mbr.Mbr_tamano[:])
-		}
-	}
-	disco.Close()
+	// 	solaa = mbr
+	// 	sstruct = len(lectura)
+	// 	if err != nil {
+	// 		msg_error(err)
+	// 	}
+	// 	if mbr.Mbr_tamano == emptymbr {
+	// 		fin_archivo = true
+	// 	} else {
+	// 		string_tamano = string(mbr.Mbr_tamano[:])
+	// 	}
+	// }
+	// disco.Close()
 
 	trimmed_string_tamano := strings.TrimRightFunc(string_tamano, func(r rune) bool { return r == '\x00' })
 	tamano, err := strconv.Atoi(trimmed_string_tamano)
@@ -600,7 +629,8 @@ func comando_fkdisk(commandArray []string) {
 	}
 
 	//fmt.Println(reflect.TypeOf(tamano))
-	discop := solaa
+	//discop := solaa
+	discop := PurbeaD
 
 	particion := [4]Partition{
 		discop.Mbr_partition_1,
@@ -702,25 +732,42 @@ func comando_fkdisk(commandArray []string) {
 					copy(discop.Mbr_partition_1.Part_name[:], nombre_part)
 
 					// Apertura del archivo
-					discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+					// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+
+					// // Conversion de struct a bytes
+					// ejmbyte := struct_to_bytes(discop)
+					// // Cambio de posicion de puntero dentro del archivo
+					// newpos, err := discoescritura.Seek(0, os.SEEK_SET)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+					// // Escritura de struct en archivo binario
+					// _, err = discoescritura.WriteAt(ejmbyte, newpos)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+
+					// discoescritura.Close()
+
+					file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
 					if err != nil {
-						msg_error(err)
+						fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+						return
+					}
+					defer file.Close()
+
+					if _, err := file.Seek(int64(0), 0); err != nil {
+						fmt.Println(err)
+						return
+					}
+					if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+						fmt.Println(err)
+						return
 					}
 
-					// Conversion de struct a bytes
-					ejmbyte := struct_to_bytes(discop)
-					// Cambio de posicion de puntero dentro del archivo
-					newpos, err := discoescritura.Seek(0, os.SEEK_SET)
-					if err != nil {
-						msg_error(err)
-					}
-					// Escritura de struct en archivo binario
-					_, err = discoescritura.WriteAt(ejmbyte, newpos)
-					if err != nil {
-						msg_error(err)
-					}
-
-					discoescritura.Close()
 					fmt.Println("")
 					fmt.Println("*                  Particion 1 asignada                       *")
 					fmt.Println("")
@@ -766,26 +813,43 @@ func comando_fkdisk(commandArray []string) {
 					copy(discop.Mbr_partition_2.Part_size[:], strconv.Itoa(tamano_archivo1))
 					copy(discop.Mbr_partition_2.Part_name[:], nombre_part)
 
-					//Apertura del archivo
-					discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+					// //Apertura del archivo
+					// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+
+					// // Conversion de struct a bytes
+					// ejmbyte2 := struct_to_bytes(discop)
+					// // Cambio de posicion de puntero dentro del archivo
+					// newpos2, err := discoescritura.Seek(0, os.SEEK_SET)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+					// // Escritura de struct en archivo binario
+					// _, err = discoescritura.WriteAt(ejmbyte2, newpos2)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+
+					// discoescritura.Close()
+
+					file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
 					if err != nil {
-						msg_error(err)
+						fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+						return
+					}
+					defer file.Close()
+
+					if _, err := file.Seek(int64(0), 0); err != nil {
+						fmt.Println(err)
+						return
+					}
+					if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+						fmt.Println(err)
+						return
 					}
 
-					// Conversion de struct a bytes
-					ejmbyte2 := struct_to_bytes(discop)
-					// Cambio de posicion de puntero dentro del archivo
-					newpos2, err := discoescritura.Seek(0, os.SEEK_SET)
-					if err != nil {
-						msg_error(err)
-					}
-					// Escritura de struct en archivo binario
-					_, err = discoescritura.WriteAt(ejmbyte2, newpos2)
-					if err != nil {
-						msg_error(err)
-					}
-
-					discoescritura.Close()
 					fmt.Println("")
 					fmt.Println("*                  Particion 2 asignada                       *")
 					fmt.Println("")
@@ -830,26 +894,43 @@ func comando_fkdisk(commandArray []string) {
 					copy(discop.Mbr_partition_3.Part_size[:], strconv.Itoa(tamano_archivo1))
 					copy(discop.Mbr_partition_3.Part_name[:], nombre_part)
 
-					//Apertura del archivo
-					discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+					// //Apertura del archivo
+					// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+
+					// // Conversion de struct a bytes
+					// ejmbyte3 := struct_to_bytes(discop)
+					// // Cambio de posicion de puntero dentro del archivo
+					// newpos3, err := discoescritura.Seek(0, os.SEEK_SET)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+					// // Escritura de struct en archivo binario
+					// _, err = discoescritura.WriteAt(ejmbyte3, newpos3)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+
+					//discoescritura.Close()
+
+					file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
 					if err != nil {
-						msg_error(err)
+						fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+						return
+					}
+					defer file.Close()
+
+					if _, err := file.Seek(int64(0), 0); err != nil {
+						fmt.Println(err)
+						return
+					}
+					if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+						fmt.Println(err)
+						return
 					}
 
-					// Conversion de struct a bytes
-					ejmbyte3 := struct_to_bytes(discop)
-					// Cambio de posicion de puntero dentro del archivo
-					newpos3, err := discoescritura.Seek(0, os.SEEK_SET)
-					if err != nil {
-						msg_error(err)
-					}
-					// Escritura de struct en archivo binario
-					_, err = discoescritura.WriteAt(ejmbyte3, newpos3)
-					if err != nil {
-						msg_error(err)
-					}
-
-					discoescritura.Close()
 					fmt.Println("")
 					fmt.Println("*                  Particion 3 asignada                       *")
 					fmt.Println("")
@@ -897,26 +978,42 @@ func comando_fkdisk(commandArray []string) {
 					copy(discop.Mbr_partition_4.Part_size[:], strconv.Itoa(tamano_archivo1))
 					copy(discop.Mbr_partition_4.Part_name[:], nombre_part)
 
-					//Apertura del archivo
-					discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-					if err != nil {
-						msg_error(err)
-					}
+					// //Apertura del archivo
+					// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
 
-					// Conversion de struct a bytes
-					ejmbyte4 := struct_to_bytes(discop)
-					// Cambio de posicion de puntero dentro del archivo
-					newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
-					if err != nil {
-						msg_error(err)
-					}
-					// Escritura de struct en archivo binario
-					_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
-					if err != nil {
-						msg_error(err)
-					}
+					// // Conversion de struct a bytes
+					// ejmbyte4 := struct_to_bytes(discop)
+					// // Cambio de posicion de puntero dentro del archivo
+					// newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
+					// // Escritura de struct en archivo binario
+					// _, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+					// if err != nil {
+					// 	msg_error(err)
+					// }
 
-					discoescritura.Close()
+					// discoescritura.Close()
+
+					file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
+					if err != nil {
+						fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+						return
+					}
+					defer file.Close()
+
+					if _, err := file.Seek(int64(0), 0); err != nil {
+						fmt.Println(err)
+						return
+					}
+					if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+						fmt.Println(err)
+						return
+					}
 					fmt.Println("")
 					fmt.Println("*                  Particion 4 asignada                       *")
 					fmt.Println("")
@@ -986,7 +1083,7 @@ func comando_fkdisk(commandArray []string) {
 
 			//Empiezan las particiones logicas
 			//Prueba_EBR := EBR{}
-			var obtener_ebr EBR
+			//var obtener_ebr EBR
 			encontrado := false
 			encontrado1 := false
 			encontrado2 := false
@@ -1021,88 +1118,153 @@ func comando_fkdisk(commandArray []string) {
 			//}
 
 			if encontrado == true {
+
 				fmt.Println("Llega ?")
-				//var emptyid [100]byte
 				inicio_particion1 := string(particion[0].Part_start[:])
 				inicio_particion1 = strings.TrimRightFunc(inicio_particion1, func(r rune) bool { return r == '\x00' })
 				//int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
 				int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
-
-				//Veamos
-				// Apertura de archivo
-				disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+				file, err := os.OpenFile(rutaa, os.O_RDONLY, 0644)
 				if err != nil {
-					msg_error(err)
+					fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+					return
 				}
-				// Calculo del tamano de struct en bytes
-				sstruct := len(struct_to_bytes(ejm_empty))
-				lectura := make([]byte, sstruct)
-				_, err = disco.ReadAt(lectura, int64(int_inicio_particion1))
-				if err != nil && err != io.EOF {
-					msg_error(err)
+				defer file.Close()
+
+				if _, err := file.Seek(int64(int_inicio_particion1), 0); err != nil {
+					fmt.Println(err)
+					return
 				}
-				// Conversion de bytes a struct
-				ejm := bytes_to_struct_ebr(lectura)
-				sstruct = len(lectura)
-				if err != nil {
-					msg_error(err)
-				} else {
-					disco.Close()
-					verificarlogicas := string(ejm.Part_name[:])
-					verificarlogicas = strings.TrimRightFunc(verificarlogicas, func(r rune) bool { return r == '\x00' })
 
-					if verificarlogicas == "" {
-						copy(obtener_ebr.Part_status[:], "0")
-						copy(obtener_ebr.Part_fit[:], part_fit)
-						copy(obtener_ebr.Part_start[:], strconv.Itoa(int_inicio_particion1))
-						copy(obtener_ebr.Part_size[:], strconv.Itoa(tamano_archivo1))
-						copy(obtener_ebr.Part_next[:], strconv.Itoa(-1))
-						copy(obtener_ebr.Part_name[:], nombre_part)
+				var PruebaEBR EBR
+				if err := binary.Read(file, binary.LittleEndian, &PruebaEBR); err != nil {
+					fmt.Println(err)
+					return
+				}
 
-						fmt.Println("Aun no existe una particion logica")
-						fmt.Println("Nombre a poner ", nombre_part)
-						fmt.Println("Tamano ", tamano_archivo1)
+				fsType := string(bytes.TrimRight(PruebaEBR.Part_fit[:], string(0)))
+				fsType1 := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				fsType2 := string(bytes.TrimRight(PruebaEBR.Part_next[:], string(0)))
+				string_tamano := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				fmt.Println("AJuste", fsType)
+				fmt.Println("Nombre", fsType1)
+				fmt.Println("Siguiente", fsType2)
+				fmt.Println("Tam : ", string_tamano)
 
-						// Apertura del archivo
-						discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-						if err != nil {
-							msg_error(err)
-						}
+				if fsType1 == "" {
+					fmt.Println("No hay EBR Escrito")
 
-						// Conversion de struct a bytes
-						ejmbyte := struct_to_bytes(obtener_ebr)
-						//prr := len(ejmbyte)
-						// Cambio de posicion de puntero dentro del archivo
-						newpos, err := discoescritura.Seek(int64(int_inicio_particion1), os.SEEK_SET)
-						//startt := int(unsafe.Sizeof(discop) + 1)
-						//tamano_ebr := int(unsafe.Sizeof(obtener_ebr))
-						//newpos, err := discoescritura.Seek(int64(int_inicio_particion1*tamano_ebr), os.SEEK_SET)
-						if err != nil {
-							msg_error(err)
-						}
-						// Escritura de struct en archivo binario
-						_, err = discoescritura.WriteAt(ejmbyte, newpos)
-						if err != nil {
-							msg_error(err)
-						}
+					inicio_particion1 := string(particion[0].Part_start[:])
+					inicio_particion1 = strings.TrimRightFunc(inicio_particion1, func(r rune) bool { return r == '\x00' })
+					//int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
+					int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
 
-						discoescritura.Close()
+					obtener_ebr := PruebaEBR
 
-						fmt.Println("Se ha guardado")
-						return
+					copy(obtener_ebr.Part_status[:], "0")
+					copy(obtener_ebr.Part_fit[:], part_fit)
+					copy(obtener_ebr.Part_start[:], strconv.Itoa(int_inicio_particion1))
+					copy(obtener_ebr.Part_size[:], strconv.Itoa(tamano_archivo1))
+					copy(obtener_ebr.Part_next[:], strconv.Itoa(-1))
+					copy(obtener_ebr.Part_name[:], nombre_part)
 
-					} else {
-						fmt.Println("Datos primer EBR")
-						fmt.Println("Nombre ", string(obtener_ebr.Part_name[:]))
-						fmt.Println("Tamano ", string(obtener_ebr.Part_size[:]))
-						fmt.Println("Inicio ", string(obtener_ebr.Part_start[:]))
-
-						fmt.Println("Entra cuando ya hay alguna particion")
-						fmt.Println("Nombre a poner ", nombre_part)
-						fmt.Println("Tamano ", tamano_archivo1)
+					file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
+					if err != nil {
+						fmt.Println("¡¡ Error !! No se pudo acceder al disco")
 						return
 					}
+					defer file.Close()
+
+					if _, err := file.Seek(int64(int_inicio_particion1), 0); err != nil {
+						fmt.Println(err)
+						return
+					}
+					if err := binary.Write(file, binary.LittleEndian, &obtener_ebr); err != nil {
+						fmt.Println(err)
+						return
+					}
+
+					fmt.Println("Se ha guardado")
+					return
 				}
+				//var emptyid [100]byte
+				// inicio_particion1 := string(particion[0].Part_start[:])
+				// inicio_particion1 = strings.TrimRightFunc(inicio_particion1, func(r rune) bool { return r == '\x00' })
+				// //int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
+				// int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
+
+				// //Veamos
+				// // Apertura de archivo
+				// disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+				// if err != nil {
+				// 	msg_error(err)
+				// }
+				// Calculo del tamano de struct en bytes
+				// sstruct := len(struct_to_bytes(ejm_empty))
+				// lectura := make([]byte, sstruct)
+				// _, err = disco.ReadAt(lectura, int64(int_inicio_particion1))
+				// if err != nil && err != io.EOF {
+				// 	msg_error(err)
+				// }
+				// // Conversion de bytes a struct
+				// ejm := bytes_to_struct_ebr(lectura)
+				// sstruct = len(lectura)
+				// if err != nil {
+				// 	msg_error(err)
+				// } else {
+				// 	disco.Close()
+				// 	verificarlogicas := string(ejm.Part_name[:])
+				// 	verificarlogicas = strings.TrimRightFunc(verificarlogicas, func(r rune) bool { return r == '\x00' })
+
+				// 	if verificarlogicas == "" {
+				// 		copy(obtener_ebr.Part_status[:], "0")
+				// 		copy(obtener_ebr.Part_fit[:], part_fit)
+				// 		copy(obtener_ebr.Part_start[:], strconv.Itoa(int_inicio_particion1))
+				// 		copy(obtener_ebr.Part_size[:], strconv.Itoa(tamano_archivo1))
+				// 		copy(obtener_ebr.Part_next[:], strconv.Itoa(-1))
+				// 		copy(obtener_ebr.Part_name[:], nombre_part)
+
+				// 		fmt.Println("Aun no existe una particion logica")
+				// 		fmt.Println("Nombre a poner ", nombre_part)
+				// 		fmt.Println("Tamano ", tamano_archivo1)
+
+				// 		// Apertura del archivo
+				// 		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+				// 		if err != nil {
+				// 			msg_error(err)
+				// 		}
+
+				// 		// Conversion de struct a bytes
+				// 		ejmbyte := struct_to_bytes(obtener_ebr)
+				// 		//prr := len(ejmbyte)
+				// 		// Cambio de posicion de puntero dentro del archivo
+				// 		newpos, err := discoescritura.Seek(int64(int_inicio_particion1), os.SEEK_SET)
+				// 		//startt := int(unsafe.Sizeof(discop) + 1)
+				// 		//tamano_ebr := int(unsafe.Sizeof(obtener_ebr))
+				// 		//newpos, err := discoescritura.Seek(int64(int_inicio_particion1*tamano_ebr), os.SEEK_SET)
+				// 		if err != nil {
+				// 			msg_error(err)
+				// 		}
+				// 		// Escritura de struct en archivo binario
+				// 		_, err = discoescritura.WriteAt(ejmbyte, newpos)
+				// 		if err != nil {
+				// 			msg_error(err)
+				// 		}
+
+				// 		discoescritura.Close()
+
+				// 	} else {
+				// 		fmt.Println("Datos primer EBR")
+				// 		fmt.Println("Nombre ", string(obtener_ebr.Part_name[:]))
+				// 		fmt.Println("Tamano ", string(obtener_ebr.Part_size[:]))
+				// 		fmt.Println("Inicio ", string(obtener_ebr.Part_start[:]))
+
+				// 		fmt.Println("Entra cuando ya hay alguna particion")
+				// 		fmt.Println("Nombre a poner ", nombre_part)
+				// 		fmt.Println("Tamano ", tamano_archivo1)
+				// 		return
+				// 	}
+				// }
 
 			} else if encontrado1 == true {
 				fmt.Println("Entra al if encontrado 2")
@@ -1150,41 +1312,68 @@ func comando_mount(commandArray []string) {
 		return
 	}
 
-	fin_archivo := false
-	var emptymbr [4]byte
-	ejm_empty := MBR{}
-	// Apertura de archivo
-	disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+	file, err := os.OpenFile(rutaa, os.O_RDONLY, 0644)
 	if err != nil {
-		msg_error(err)
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
 	}
-	// Calculo del tamano de struct en bytes
-	var solaa MBR
+	defer file.Close()
 
-	mbr2 := struct_to_bytes(ejm_empty)
-	sstruct := len(mbr2)
-	if !fin_archivo {
-		// Lectrura de conjunto de bytes en archivo binario
-		lectura := make([]byte, sstruct)
-		_, err = disco.ReadAt(lectura, 0)
-		if err != nil && err != io.EOF {
-			msg_error(err)
-		}
-		// Conversion de bytes a struct
-		mbr := bytes_to_struct_mbr(lectura)
-
-		solaa = mbr
-		sstruct = len(lectura)
-		if err != nil {
-			msg_error(err)
-		}
-		if mbr.Mbr_tamano == emptymbr {
-			fin_archivo = true
-		} else {
-			//string_tamano = string(mbr.Mbr_tamano[:])
-		}
+	if _, err := file.Seek(int64(0), 0); err != nil {
+		fmt.Println(err)
+		return
 	}
-	disco.Close()
+
+	var PurbeaD MBR
+	if err := binary.Read(file, binary.LittleEndian, &PurbeaD); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fsType := string(bytes.TrimRight(PurbeaD.Dsk_fit[:], string(0)))
+	fsType1 := string(bytes.TrimRight(PurbeaD.Mbr_dsk_signature[:], string(0)))
+	fsType2 := string(bytes.TrimRight(PurbeaD.Mbr_fecha_creacion[:], string(0)))
+	string_tamano := string(bytes.TrimRight(PurbeaD.Mbr_tamano[:], string(0)))
+	fmt.Println("AJuste", fsType)
+	fmt.Println("dsk", fsType1)
+	fmt.Println("Fecha", fsType2)
+	fmt.Println("Tam : ", string_tamano)
+
+	// fin_archivo := false
+	// var emptymbr [4]byte
+	// ejm_empty := MBR{}
+	// // Apertura de archivo
+	// disco, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+	// if err != nil {
+	// 	msg_error(err)
+	// }
+	// // Calculo del tamano de struct en bytes
+	// var solaa MBR
+
+	// mbr2 := struct_to_bytes(ejm_empty)
+	// sstruct := len(mbr2)
+	// if !fin_archivo {
+	// 	// Lectrura de conjunto de bytes en archivo binario
+	// 	lectura := make([]byte, sstruct)
+	// 	_, err = disco.ReadAt(lectura, 0)
+	// 	if err != nil && err != io.EOF {
+	// 		msg_error(err)
+	// 	}
+	// 	// Conversion de bytes a struct
+	// 	mbr := bytes_to_struct_mbr(lectura)
+
+	// 	solaa = mbr
+	// 	sstruct = len(lectura)
+	// 	if err != nil {
+	// 		msg_error(err)
+	// 	}
+	// 	if mbr.Mbr_tamano == emptymbr {
+	// 		fin_archivo = true
+	// 	} else {
+	// 		//string_tamano = string(mbr.Mbr_tamano[:])
+	// 	}
+	// }
+	// disco.Close()
 
 	// trimmed_string_tamano := strings.TrimRightFunc(string_tamano, func(r rune) bool { return r == '\x00' })
 	// tamano, err := strconv.Atoi(trimmed_string_tamano)
@@ -1193,7 +1382,7 @@ func comando_mount(commandArray []string) {
 	}
 
 	//fmt.Println(reflect.TypeOf(tamano))
-	discop := solaa
+	discop := PurbeaD
 
 	particion := [4]Partition{
 		discop.Mbr_partition_1,
@@ -1290,26 +1479,42 @@ func comando_mount(commandArray []string) {
 
 		copy(discop.Mbr_partition_1.Part_status[:], "1")
 
-		//Apertura del archivo
-		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-		if err != nil {
-			msg_error(err)
-		}
+		// //Apertura del archivo
+		// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		// Conversion de struct a bytes
-		ejmbyte4 := struct_to_bytes(discop)
-		// Cambio de posicion de puntero dentro del archivo
-		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
-		if err != nil {
-			msg_error(err)
-		}
-		// Escritura de struct en archivo binario
-		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
-		if err != nil {
-			msg_error(err)
-		}
+		// // Conversion de struct a bytes
+		// ejmbyte4 := struct_to_bytes(discop)
+		// // Cambio de posicion de puntero dentro del archivo
+		// newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
+		// // Escritura de struct en archivo binario
+		// _, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		discoescritura.Close()
+		// discoescritura.Close()
+
+		file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
+		if err != nil {
+			fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+			return
+		}
+		defer file.Close()
+
+		if _, err := file.Seek(int64(0), 0); err != nil {
+			fmt.Println(err)
+			return
+		}
+		if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+			fmt.Println(err)
+			return
+		}
 
 		fmt.Println("")
 		fmt.Println("*               Particion montada con exito                *")
@@ -1352,26 +1557,42 @@ func comando_mount(commandArray []string) {
 
 		copy(discop.Mbr_partition_2.Part_status[:], "1")
 
-		//Apertura del archivo
-		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-		if err != nil {
-			msg_error(err)
-		}
+		// //Apertura del archivo
+		// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		// Conversion de struct a bytes
-		ejmbyte4 := struct_to_bytes(discop)
-		// Cambio de posicion de puntero dentro del archivo
-		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
-		if err != nil {
-			msg_error(err)
-		}
-		// Escritura de struct en archivo binario
-		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
-		if err != nil {
-			msg_error(err)
-		}
+		// // Conversion de struct a bytes
+		// ejmbyte4 := struct_to_bytes(discop)
+		// // Cambio de posicion de puntero dentro del archivo
+		// newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
+		// // Escritura de struct en archivo binario
+		// _, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		discoescritura.Close()
+		// discoescritura.Close()
+
+		file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
+		if err != nil {
+			fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+			return
+		}
+		defer file.Close()
+
+		if _, err := file.Seek(int64(0), 0); err != nil {
+			fmt.Println(err)
+			return
+		}
+		if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+			fmt.Println(err)
+			return
+		}
 
 		fmt.Println("")
 		fmt.Println("*               Particion montada con exito                *")
@@ -1414,26 +1635,42 @@ func comando_mount(commandArray []string) {
 
 		copy(discop.Mbr_partition_3.Part_status[:], "1")
 
-		//Apertura del archivo
-		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-		if err != nil {
-			msg_error(err)
-		}
+		// //Apertura del archivo
+		// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		// Conversion de struct a bytes
-		ejmbyte4 := struct_to_bytes(discop)
-		// Cambio de posicion de puntero dentro del archivo
-		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
-		if err != nil {
-			msg_error(err)
-		}
-		// Escritura de struct en archivo binario
-		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
-		if err != nil {
-			msg_error(err)
-		}
+		// // Conversion de struct a bytes
+		// ejmbyte4 := struct_to_bytes(discop)
+		// // Cambio de posicion de puntero dentro del archivo
+		// newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
+		// // Escritura de struct en archivo binario
+		// _, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		discoescritura.Close()
+		// discoescritura.Close()
+
+		file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
+		if err != nil {
+			fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+			return
+		}
+		defer file.Close()
+
+		if _, err := file.Seek(int64(0), 0); err != nil {
+			fmt.Println(err)
+			return
+		}
+		if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+			fmt.Println(err)
+			return
+		}
 
 		fmt.Println("")
 		fmt.Println("*               Particion montada con exito                *")
@@ -1476,26 +1713,42 @@ func comando_mount(commandArray []string) {
 
 		copy(discop.Mbr_partition_4.Part_status[:], "1")
 
-		//Apertura del archivo
-		discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
-		if err != nil {
-			msg_error(err)
-		}
+		// //Apertura del archivo
+		// discoescritura, err := os.OpenFile(rutaa, os.O_RDWR, 0660)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		// Conversion de struct a bytes
-		ejmbyte4 := struct_to_bytes(discop)
-		// Cambio de posicion de puntero dentro del archivo
-		newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
-		if err != nil {
-			msg_error(err)
-		}
-		// Escritura de struct en archivo binario
-		_, err = discoescritura.WriteAt(ejmbyte4, newpos4)
-		if err != nil {
-			msg_error(err)
-		}
+		// // Conversion de struct a bytes
+		// ejmbyte4 := struct_to_bytes(discop)
+		// // Cambio de posicion de puntero dentro del archivo
+		// newpos4, err := discoescritura.Seek(0, os.SEEK_SET)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
+		// // Escritura de struct en archivo binario
+		// _, err = discoescritura.WriteAt(ejmbyte4, newpos4)
+		// if err != nil {
+		// 	msg_error(err)
+		// }
 
-		discoescritura.Close()
+		// discoescritura.Close()
+
+		file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
+		if err != nil {
+			fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+			return
+		}
+		defer file.Close()
+
+		if _, err := file.Seek(int64(0), 0); err != nil {
+			fmt.Println(err)
+			return
+		}
+		if err := binary.Write(file, binary.LittleEndian, &discop); err != nil {
+			fmt.Println(err)
+			return
+		}
 
 		fmt.Println("")
 		fmt.Println("*               Particion montada con exito                *")
@@ -1571,6 +1824,10 @@ func comando_mkfs(commandArray []string) {
 
 			crear_EXT2(nodo, int(n_e))
 
+			fmt.Println("")
+			fmt.Println("*               Formato EXT2 creado con exito              *")
+			fmt.Println("")
+
 		} else {
 			fmt.Println("No se encontró ningúna particion con ese ID")
 			return
@@ -1644,7 +1901,7 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 
 	//Se crea el Bitmap de Bloques
 
-	fmt.Println("Se crean los de Bloque")
+	//fmt.Println("Se crean los de Bloque")
 
 	bmBloque := make([]BitmapBloque, n*3)
 	siguientes_bloque := BitmapBloque{Status: [1]byte{'0'}}
@@ -1655,6 +1912,8 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 	for i := 2; i < n; i++ {
 		bmBloque[i] = siguientes_bloque
 	}
+
+	EscribirBitMapBloques(nodoActual.ruta, bmBloque, int64(nodoActual.inicioparticion), n*3, n)
 
 	// counter1 := 0
 	// for i := 0; i < n; i++ {
@@ -1722,59 +1981,10 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 
 func Escribir_SuperBloque(path string, SB SuperBloque, inicioP int) {
 
-	// Apertura del archivo
-	// discoescritura, err := os.OpenFile(path, os.O_RDWR, 0660)
-	// if err != nil {
-	// 	msg_error(err)
-	// }
-
-	// Conversion de struct a bytes
-	PruebaSeek := MBR{}
-	Part_si := Partition{}
 	Tam_EBR := EBR{}
-	otroo := unsafe.Sizeof(PruebaSeek)
-	Part_size := unsafe.Sizeof(Part_si)
 	EBR_Size := unsafe.Sizeof(Tam_EBR)
-	fmt.Println("MBR ? ", otroo)
-	prueba := unsafe.Sizeof(SB)
-	fmt.Println("SB ", prueba)
-	sumas := otroo + prueba
-	fmt.Println("Suma ", sumas)
-	fmt.Println("Inicio ", strconv.Itoa(inicioP))
 
-	suma2 := inicioP + int(otroo) + int(otroo) + int(Part_size) + int(Part_size) + int(EBR_Size) + int(EBR_Size) + int(prueba)
-
-	fmt.Println("Que sale en suma ", suma2)
-
-	// ejmbyte := struct_to_bytes(SB)
-	// ppp := len(ejmbyte)
-	// fmt.Println("Que sale? ", ppp)
-	// // Cambio de posicion de puntero dentro del archivo
-	// newpos, err := discoescritura.Seek(int64(otroo), os.SEEK_SET)
-	// if err != nil {
-	// 	msg_error(err)
-	// }
-	// // Escritura de struct en archivo binario
-	// _, err = discoescritura.WriteAt(ejmbyte, newpos)
-	// if err != nil {
-	// 	msg_error(err)
-	// }
-
-	// discoescritura.Close()
-
-	// file, err := os.OpenFile(path, os.O_RDWR, 0644)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// defer file.Close()
-
-	// offset := int64(inicioP)
-	// if _, err := file.Seek(offset, 0); err != nil {
-	// 	fmt.Println(err)
-	// }
-	// if err := binary.Write(file, binary.LittleEndian, &SB); err != nil {
-	// 	fmt.Println(err)
-	// }
+	nuevoInicio := inicioP + int(EBR_Size)
 
 	file, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
@@ -1783,7 +1993,7 @@ func Escribir_SuperBloque(path string, SB SuperBloque, inicioP int) {
 	}
 	defer file.Close()
 
-	if _, err := file.Seek(int64(inicioP), 0); err != nil {
+	if _, err := file.Seek(int64(nuevoInicio), 0); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -1855,24 +2065,8 @@ func verSB(path string, inicioP int) {
 
 func EscribirBitMapInodos(path string, bmInodo []BitMapInodo, inicio int64, n int) error {
 
-	PruebaSeek := MBR{}
-	Part_si := Partition{}
-	Tam_EBR := EBR{}
 	SB := SuperBloque{}
-	otroo := unsafe.Sizeof(PruebaSeek)
-	Part_size := unsafe.Sizeof(Part_si)
-	EBR_Size := unsafe.Sizeof(Tam_EBR)
-	fmt.Println("MBR ? ", otroo)
 	prueba := unsafe.Sizeof(SB)
-	fmt.Println("SB ", prueba)
-	sumas := otroo + prueba
-	fmt.Println("Suma ", sumas)
-
-	fmt.Println("Inicio ", strconv.Itoa(int(inicio)))
-
-	suma2 := int(inicio) + int(otroo) + int(otroo) + int(Part_size) + int(Part_size) + int(EBR_Size) + int(EBR_Size) + int(prueba) + int(prueba) + int(2*prueba)
-
-	fmt.Println("Inicio ? ", suma2)
 
 	file, err := os.OpenFile(path, os.O_RDWR, 0644)
 	if err != nil {
@@ -1892,6 +2086,104 @@ func EscribirBitMapInodos(path string, bmInodo []BitMapInodo, inicio int64, n in
 	}
 
 	return nil
+}
+
+func EscribirBitMapBloques(path string, bmBloque []BitmapBloque, inicio int64, n int, npos int) error {
+
+	SB := SuperBloque{}
+	BMInode := BitMapInodo{}
+
+	BmInode_size := unsafe.Sizeof(BMInode)
+	prueba := unsafe.Sizeof(SB)
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	for i := 0; i < n; i++ {
+		//offset := int64(inicio) + int64(i)*int64(binary.Size(BitMapInodo{}))
+		offset := int64(inicio) + int64(i)
+		offset1 := offset + int64(prueba) + int64(BmInode_size+uintptr(npos))
+		if _, err := file.Seek(offset1, 0); err != nil {
+			return err
+		}
+		if err := binary.Write(file, binary.LittleEndian, &bmBloque[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func comando_execute(commandArray []string) {
+	rutaa := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">path=") {
+			rutaa = strings.Replace(data, ">path=", "", 1)
+		}
+	}
+
+	if rutaa == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado una ruta para el disco")
+		fmt.Println("")
+		return
+	}
+
+	ext := filepath.Ext(rutaa)
+	if ext == ".eea" {
+		archivo, err := os.Open(rutaa)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer archivo.Close()
+
+		sc := bufio.NewScanner(archivo)
+		for sc.Scan() {
+			linea := sc.Text()
+			if len(linea) > 0 {
+				// buscar el índice del símbolo #
+				indiceComentario := strings.Index(linea, "#")
+
+				// si hay un comentario, obtenerlo
+				if indiceComentario >= 0 {
+					comentario := linea[indiceComentario+1:]
+					linea = linea[:indiceComentario]
+
+					// imprimir el comentario
+					fmt.Println("Comentario encontrado ->", comentario)
+				}
+
+				// separar el comando y los argumentos
+				comando := strings.TrimSpace(linea)
+				if comando != "" && comando != "exit" {
+					fmt.Println("*----------------------------------------------------------*")
+					fmt.Println("*                      [MIA] Proyecto 2                    *")
+					fmt.Println("*           Cesar Andre Ramirez Davila 202010816           *")
+					fmt.Println("*----------------------------------------------------------*")
+					fmt.Println("Ejecutando el comando -", comando)
+					split_comando(comando)
+				}
+			}
+		}
+
+		if err := sc.Err(); err != nil {
+			fmt.Println(err)
+		}
+
+	} else {
+		fmt.Println("¡¡ Error !! La extension del archivo no corresponde a .eea")
+	}
+
 }
 
 func struct_to_bytes(p interface{}) []byte {
@@ -2033,26 +2325,3 @@ func (lista *ListaDobleEnlazada) buscarPorID(id string) (bool, *NodoMount) {
 	}
 	return false, nil
 }
-
-// func probando(path string) {
-// 	archivo, err := os.OpenFile(path, os.O_RDWR, 0666)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return
-// 	}
-// 	defer archivo.Close()
-
-// 	_, err = archivo.Seek(0, io.SeekEnd)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return
-// 	}
-
-// 	posicion, err := archivo.Offset()
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return
-// 	}
-
-// 	fmt.Printf("La última posición con información escrita es %d\n", posicion)
-// }
