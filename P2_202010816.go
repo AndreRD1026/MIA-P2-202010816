@@ -88,7 +88,7 @@ type BloqueCarpetas = struct {
 }
 
 type BloqueArchivos = struct {
-	B_content [10]byte // Array con el contenido del archivo
+	B_content [64]byte // Array con el contenido del archivo
 }
 
 type BitMapInodo = struct {
@@ -1928,54 +1928,81 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 	// 	fmt.Println()
 	// }
 
-	// Se crean manualmente los primeros Inodos
-
-	// Predeterminado[0].i_block[0] = 0;
-	// Predeterminado[0].i_type = '0';
-	// Predeterminado[0].i_perm = 664;
-
-	// I_block [10]byte // Array en los que los primeros 16 registros son bloques directos.
-	// I_type  [10]byte // indica si es archivo o carpeta. 1 = Archivo y 0 = Carpeta
-	// I_perm  [10]byte // Guardará los permisos del archivo o carpeta.
-
 	fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
 	fecha_atime := string(fecha_creacion)
-	//avr := ""
 
-	// var avr string = "abcdefghij"
 	var fechaBytes [19]byte
 
-	// // Convertir la cadena en un array de bytes de longitud 10
 	copy(fechaBytes[:], []byte(fecha_atime))
 
+	// Se crean manualmente los primeros Inodos
+
 	Predeterminado := make([]Inodos, 2)
-	Predeterminado[0].I_uid = [4]byte{'1'}
-	Predeterminado[0].I_gid = [4]byte{'1'}
-	Predeterminado[0].I_atime = fechaBytes
-	Predeterminado[0].I_ctime = fechaBytes
-	Predeterminado[0].I_mtime = fechaBytes
-	Predeterminado[0].I_block = [4]byte{'0'}
-	Predeterminado[0].I_type = [1]byte{'0'}
-	Predeterminado[0].I_perm = [4]byte{'0'}
 
-	uidBytes := Predeterminado[0].I_uid[:]
-	gidBytes := Predeterminado[0].I_gid[:]
-	atimeBytes := Predeterminado[0].I_atime[:]
-	ctimeBytes := Predeterminado[0].I_ctime[:]
-	mtimeBytes := Predeterminado[0].I_mtime[:]
-	blockBytes := Predeterminado[0].I_block[:]
-	typeBytes := Predeterminado[0].I_type[:]
-	permBytes := Predeterminado[0].I_perm[:]
+	copy(Predeterminado[0].I_uid[:], "1")
+	copy(Predeterminado[0].I_gid[:], "1")
+	copy(Predeterminado[0].I_atime[:], []byte(fecha_atime))
+	copy(Predeterminado[0].I_ctime[:], []byte(fecha_atime))
+	copy(Predeterminado[0].I_mtime[:], []byte(fecha_atime))
+	copy(Predeterminado[0].I_block[:], "0")
+	copy(Predeterminado[0].I_type[:], "0")
+	copy(Predeterminado[0].I_perm[:], strconv.Itoa(664))
 
-	// Copiar los bytes en el slice de destino utilizando el método copy()
-	copy(uidBytes, []byte("1"))
-	copy(gidBytes, []byte("1"))
-	copy(atimeBytes, []byte(fecha_atime))
-	copy(ctimeBytes, []byte(fecha_atime))
-	copy(mtimeBytes, []byte(fecha_atime))
-	copy(blockBytes, []byte("0"))
-	copy(typeBytes, []byte("0"))
-	copy(permBytes, []byte("0"))
+	copy(Predeterminado[1].I_uid[:], "1")
+	copy(Predeterminado[1].I_gid[:], "1")
+	copy(Predeterminado[1].I_atime[:], []byte(fecha_atime))
+	copy(Predeterminado[1].I_ctime[:], []byte(fecha_atime))
+	copy(Predeterminado[1].I_mtime[:], []byte(fecha_atime))
+	copy(Predeterminado[1].I_block[:], "1")
+	copy(Predeterminado[1].I_type[:], "1")
+	copy(Predeterminado[1].I_perm[:], strconv.Itoa(700))
+
+	EscribirInodos(nodoActual.ruta, Predeterminado, int64(nodoActual.inicioparticion), n, n*3)
+
+	// SP.s_firts_ino = SP.s_firts_ino + 2 * sizeof(Inodos);
+
+	// Inn := Inodos{}
+	// //inode_star_ := int(binary.LittleEndian.Uint32(SP.S_firts_ino[:]))
+	// Inode_size := unsafe.Sizeof(Inn)
+
+	// //int(binary.LittleEndian.Uint32(SP.S_inode_start[:])) + n*int(size_Inode)
+
+	// SP.S_firts_ino = int(binary.LittleEndian.Uint32(SP.S_firts_ino[:])) + 2 * int(Inode_size)
+
+	// BloqueCarpeta Carpeta;
+	// Content contenidoCarpeta;
+	// contenidoCarpeta.b_inodo = 1;
+	// strcpy(contenidoCarpeta.b_name, "users.txt");
+
+	// Carpeta.b_content[0] = contenidoCarpeta;
+	// Carpeta.b_content[1].b_inodo = -1;
+	// Carpeta.b_content[2].b_inodo = -1;
+	// Carpeta.b_content[3].b_inodo = -1;
+
+	Carpeta := make([]BloqueCarpetas, 4)
+	//Carpeta := BloqueCarpetas{}
+	contenidoCarpeta := Content{}
+	copy(contenidoCarpeta.B_inodo[:], "1")
+	copy(contenidoCarpeta.B_name[:], "users.txt")
+
+	// copy(Carpeta[0].B_content[:], contenidoCarpeta)
+	// copy(Carpeta[1].B_content[:], "-1")
+
+	copy(Carpeta[0].B_content[0].B_name[:], contenidoCarpeta.B_name[:])
+	copy(Carpeta[0].B_content[1].B_inodo[:], []byte(strconv.Itoa(-1)))
+	copy(Carpeta[0].B_content[2].B_inodo[:], []byte(strconv.Itoa(-1)))
+	copy(Carpeta[0].B_content[3].B_inodo[:], []byte(strconv.Itoa(-1)))
+
+	Escribir_BloqueCarpetas(nodoActual.ruta, Carpeta, nodoActual.inicioparticion, n)
+
+	// //Bloque Archivos
+	Archivo := BloqueArchivos{}
+	contenidoarchivo := "1,G,root\n1,U,root,root,123\n"
+	copy(Archivo.B_content[:], []byte(contenidoarchivo))
+
+	Escribir_BloqueArchivo(nodoActual.ruta, Archivo, nodoActual.inicioparticion, n)
+	// BloqueArchivos Archivo;
+	// strcpy(Archivo.b_content, "1,G,root\n1,U,root,root,123\n");
 
 }
 
@@ -2002,65 +2029,6 @@ func Escribir_SuperBloque(path string, SB SuperBloque, inicioP int) {
 		return
 	}
 
-}
-
-func verDisco(path string) {
-	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
-	if err != nil {
-		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
-		return
-	}
-	defer file.Close()
-
-	if _, err := file.Seek(int64(0), 0); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	var PurbeaD MBR
-	if err := binary.Read(file, binary.LittleEndian, &PurbeaD); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fsType := string(bytes.TrimRight(PurbeaD.Dsk_fit[:], string(0)))
-	fsType1 := string(bytes.TrimRight(PurbeaD.Mbr_dsk_signature[:], string(0)))
-	fsType2 := string(bytes.TrimRight(PurbeaD.Mbr_fecha_creacion[:], string(0)))
-	fsType3 := string(bytes.TrimRight(PurbeaD.Mbr_tamano[:], string(0)))
-	fmt.Println("AJuste", fsType)
-	fmt.Println("dsk", fsType1)
-	fmt.Println("Fecha", fsType2)
-	fmt.Println("Tam : ", fsType3)
-
-	return
-}
-
-func verSB(path string, inicioP int) {
-
-	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
-	if err != nil {
-		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
-		return
-	}
-	defer file.Close()
-
-	if _, err := file.Seek(int64(inicioP), 0); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	var SB SuperBloque
-	if err := binary.Read(file, binary.LittleEndian, &SB); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fsType := string(bytes.TrimRight(SB.S_filesystem_type[:], string(0)))
-	fsType1 := string(bytes.TrimRight(SB.S_mtime[:], string(0)))
-	fsType2 := string(bytes.TrimRight(SB.S_magic[:], string(0)))
-	fmt.Println(fsType)
-	fmt.Println(fsType1)
-	fmt.Println(fsType2)
 }
 
 func EscribirBitMapInodos(path string, bmInodo []BitMapInodo, inicio int64, n int) error {
@@ -2106,6 +2074,7 @@ func EscribirBitMapBloques(path string, bmBloque []BitmapBloque, inicio int64, n
 		//offset := int64(inicio) + int64(i)*int64(binary.Size(BitMapInodo{}))
 		offset := int64(inicio) + int64(i)
 		offset1 := offset + int64(prueba) + int64(BmInode_size+uintptr(npos))
+		//fmt.Println("DOnde manda ", offset1)
 		if _, err := file.Seek(offset1, 0); err != nil {
 			return err
 		}
@@ -2115,6 +2084,166 @@ func EscribirBitMapBloques(path string, bmBloque []BitmapBloque, inicio int64, n
 	}
 
 	return nil
+}
+
+func EscribirInodos(path string, inodo []Inodos, inicio int64, n int, npos int) error {
+
+	SB := SuperBloque{}
+	BMInode := BitMapInodo{}
+
+	BmInode_size := unsafe.Sizeof(BMInode)
+	prueba := unsafe.Sizeof(SB)
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	offset := int64(inicio) + int64(prueba) + int64(n) + int64(BmInode_size+uintptr(n))
+	if _, err := file.Seek(4100, 0); err != nil {
+		return err
+	}
+
+	for i := 0; i < 2; i++ {
+		offset1 := offset + int64(i)*int64(binary.Size(Inodos{}))
+		if _, err := file.Seek(offset1, 0); err != nil {
+			return err
+		}
+		if err := binary.Write(file, binary.LittleEndian, &inodo[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func Escribir_BloqueCarpetas(path string, Carpeta []BloqueCarpetas, inicio int, n int) {
+
+	SB := SuperBloque{}
+	BMInode := BitMapInodo{}
+
+	BmInode_size := unsafe.Sizeof(BMInode)
+	prueba := unsafe.Sizeof(SB)
+
+	//nuevoInicio := inicio + int(EBR_Size)
+
+	offset := int64(inicio) + int64(prueba) + int64(n) + int64(BmInode_size+uintptr(n))
+	offset1 := offset + int64(2)*int64(binary.Size(Inodos{}))
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(offset1), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err := binary.Write(file, binary.LittleEndian, &Carpeta); err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+func Escribir_BloqueArchivo(path string, Archivo BloqueArchivos, inicio int, n int) {
+
+	SB := SuperBloque{}
+	BMInode := BitMapInodo{}
+
+	BmInode_size := unsafe.Sizeof(BMInode)
+	prueba := unsafe.Sizeof(SB)
+
+	otro := BloqueCarpetas{}
+
+	abr := unsafe.Sizeof(otro)
+
+	//nuevoInicio := inicio + int(EBR_Size)
+
+	offset := int64(inicio) + int64(prueba) + int64(n) + int64(BmInode_size+uintptr(n))
+	offset1 := offset + int64(2)*int64(binary.Size(Inodos{})) + int64(abr)
+
+	file, err := os.OpenFile(path, os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(offset1), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err := binary.Write(file, binary.LittleEndian, &Archivo); err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+func verDisco(path string) {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(0), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var PurbeaD MBR
+	if err := binary.Read(file, binary.LittleEndian, &PurbeaD); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fsType := string(bytes.TrimRight(PurbeaD.Dsk_fit[:], string(0)))
+	fsType1 := string(bytes.TrimRight(PurbeaD.Mbr_dsk_signature[:], string(0)))
+	fsType2 := string(bytes.TrimRight(PurbeaD.Mbr_fecha_creacion[:], string(0)))
+	fsType3 := string(bytes.TrimRight(PurbeaD.Mbr_tamano[:], string(0)))
+	fmt.Println("AJuste", fsType)
+	fmt.Println("dsk", fsType1)
+	fmt.Println("Fecha", fsType2)
+	fmt.Println("Tam : ", fsType3)
+
+	return
+}
+
+func verSB(path string, inicioP int) {
+
+	Tam_EBR := EBR{}
+	EBR_Size := unsafe.Sizeof(Tam_EBR)
+
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	nuevoinicio := inicioP + int(EBR_Size)
+
+	if _, err := file.Seek(int64(nuevoinicio), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var SB SuperBloque
+	if err := binary.Read(file, binary.LittleEndian, &SB); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fsType := string(bytes.TrimRight(SB.S_filesystem_type[:], string(0)))
+	fsType1 := string(bytes.TrimRight(SB.S_mtime[:], string(0)))
+	fsType2 := string(bytes.TrimRight(SB.S_magic[:], string(0)))
+	fmt.Println("File ", fsType)
+	fmt.Println("Time", fsType1)
+	fmt.Println("Magic", fsType2)
 }
 
 func comando_execute(commandArray []string) {
