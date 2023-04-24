@@ -114,7 +114,15 @@ type NodoMount struct {
 	prevmount        *NodoMount
 }
 
+// Esto ayuda a llevar el login
+
+type NodoLogin struct {
+	id     string
+	nombre string
+}
+
 var miLista *ListaDobleEnlazada = &ListaDobleEnlazada{}
+var usuarioLogeado []NodoLogin
 
 func main() {
 	analizar()
@@ -175,6 +183,10 @@ func ejecucion_comando(commandArray []string) {
 		comando_mount(commandArray)
 	} else if data == "mkfs" {
 		comando_mkfs(commandArray)
+	} else if data == "login" {
+		comando_login(commandArray)
+	} else if data == "logout" {
+		comando_logout()
 	} else if data == "execute" {
 		comando_execute(commandArray)
 	} else {
@@ -431,7 +443,6 @@ func comando_rmdisk(commandArray []string) {
 				return err
 			}
 			fmt.Println("")
-			//fmt.Println("*                 Disco creado con exito                   *")
 			fmt.Println("*               Disco eliminado con exito                  *")
 			fmt.Println("")
 		}
@@ -784,7 +795,8 @@ func comando_fkdisk(commandArray []string) {
 				partSizeStr := string(particion[0].Part_size[:])
 				partSizeStr = strings.TrimRightFunc(partSizeStr, func(r rune) bool { return r == '\x00' })
 				partSizeInt, err := strconv.Atoi(partSizeStr)
-				pruebainicio := (partSizeInt * 1024)
+				//pruebainicio := (partSizeInt * 1024)
+				pruebainicio := (partSizeInt)
 				fmt.Println("Que sale en bytes ", pruebainicio)
 				if err != nil {
 					// Manejo del error
@@ -867,7 +879,8 @@ func comando_fkdisk(commandArray []string) {
 				partSizeStr1 = strings.TrimRightFunc(partSizeStr1, func(r rune) bool { return r == '\x00' })
 				partSizeInt, err := strconv.Atoi(partSizeStr)
 				partSizeInt1, err := strconv.Atoi(partSizeStr1)
-				pruebainicio := (partSizeInt1 * 1024)
+				//pruebainicio := (partSizeInt1 * 1024)
+				pruebainicio := (partSizeInt1)
 				if err != nil {
 					// Manejo del error
 				}
@@ -950,7 +963,8 @@ func comando_fkdisk(commandArray []string) {
 				partSizeInt, err := strconv.Atoi(partSizeStr)
 				partSizeInt1, err := strconv.Atoi(partSizeStr1)
 				partSizeInt2, err := strconv.Atoi(partSizeStr2)
-				pruebainicio := (partSizeInt2 * 1024)
+				//pruebainicio := (partSizeInt2 * 1024)
+				pruebainicio := (partSizeInt2)
 				if err != nil {
 					// Manejo del error
 				}
@@ -2213,8 +2227,69 @@ func verDisco(path string) {
 	return
 }
 
-func verSB(path string, inicioP int) {
+func verSB(path string, inicioP int) (string, error) {
 
+	Tam_EBR := EBR{}
+	EBR_Size := unsafe.Sizeof(Tam_EBR)
+
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		//return
+	}
+	defer file.Close()
+
+	nuevoinicio := inicioP + int(EBR_Size)
+
+	if _, err := file.Seek(int64(nuevoinicio), 0); err != nil {
+		fmt.Println(err)
+		//return
+	}
+
+	var SB SuperBloque
+	if err := binary.Read(file, binary.LittleEndian, &SB); err != nil {
+		fmt.Println(err)
+		//return
+	}
+
+	fsType := string(bytes.TrimRight(SB.S_inodes_count[:], string(0)))
+	// fsType1 := string(bytes.TrimRight(SB.S_mtime[:], string(0)))
+	// fsType2 := string(bytes.TrimRight(SB.S_magic[:], string(0)))
+
+	n, err := strconv.Atoi(fsType)
+	//fmt.Println("Inodes ", fsType)
+	// fmt.Println("Time", fsType1)
+	// fmt.Println("Magic", fsType2)
+
+	BMInode := BitMapInodo{}
+
+	BmInode_size := unsafe.Sizeof(BMInode)
+	prueba := unsafe.Sizeof(SB)
+
+	otro := BloqueCarpetas{}
+
+	abr := unsafe.Sizeof(otro)
+
+	offset := int64(inicioP) + int64(prueba) + int64(n) + int64(BmInode_size+uintptr(n))
+	offset1 := offset + int64(2)*int64(binary.Size(Inodos{})) + int64(abr)
+
+	if _, err := file.Seek(int64(offset1), 0); err != nil {
+		fmt.Println(err)
+		//return
+	}
+
+	var Archivo BloqueArchivos
+	if err := binary.Read(file, binary.LittleEndian, &Archivo); err != nil {
+		fmt.Println(err)
+		//return
+	}
+
+	sakee := string(bytes.TrimRight(Archivo.B_content[:], string(0)))
+	return sakee, nil
+
+}
+
+func verArchivo(path string, inicioP int) {
 	Tam_EBR := EBR{}
 	EBR_Size := unsafe.Sizeof(Tam_EBR)
 
@@ -2244,6 +2319,110 @@ func verSB(path string, inicioP int) {
 	fmt.Println("File ", fsType)
 	fmt.Println("Time", fsType1)
 	fmt.Println("Magic", fsType2)
+
+}
+
+func comando_login(commandArray []string) {
+	straux := ""
+
+	id_buscar := ""
+	user_buscar := ""
+	pass_buscar := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">id=") {
+			straux = strings.Replace(data, ">id=", "", 1)
+			//straux = strings.Replace(dimensional, "\"", "", 2)
+			id_buscar = straux
+		} else if strings.Contains(data, ">user=") {
+			user_buscar = strings.Replace(data, ">user=", "", 1)
+		} else if strings.Contains(data, ">pwd=") {
+			pass_buscar = strings.Replace(data, ">pwd=", "", 1)
+		}
+	}
+
+	if id_buscar == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un id para el login")
+		fmt.Println("")
+		return
+	}
+
+	if user_buscar == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un usuario para el login")
+		fmt.Println("")
+		return
+	}
+
+	if pass_buscar == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado una contraseña para el login")
+		fmt.Println("")
+		return
+	}
+
+	// Verificar si la lista está vacía
+	if len(usuarioLogeado) == 0 {
+		existe, nodo := miLista.buscarPorID(id_buscar)
+		if existe {
+
+			// Se lee el contenido del primer archivo
+			sakee, err := verSB(nodo.ruta, nodo.inicioparticion)
+			if err != nil {
+				// manejar error
+			}
+
+			lines := strings.Split(sakee, "\n")
+
+			for _, line := range lines {
+				if strings.Contains(line, user_buscar) {
+					fields := strings.Split(line, ",")
+					//fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s, Contra: %s\n", fields[0], fields[1], fields[2], fields[3])
+					//fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s\n", fields[0], fields[1], fields[2])
+					if fields[1] == "U" {
+						fmt.Printf("Es un usuario %s\n", fields[4])
+						if fields[2] == user_buscar && fields[4] == pass_buscar {
+							fmt.Println("Usuario y contra son iguales :D")
+							usuarioLogeado = append(usuarioLogeado, NodoLogin{id: id_buscar, nombre: user_buscar})
+						} else {
+							fmt.Println("El usuario o contraseña no coincide ")
+							return
+						}
+					}
+				}
+			}
+
+			fmt.Println("")
+			fmt.Println("*           Se ha iniciado sesion con el usuario: ", user_buscar, " 	*")
+			fmt.Println("")
+
+		} else {
+			fmt.Println("No se encontró ningúna particion con ese ID")
+			return
+		}
+
+	} else {
+		for _, usuario := range usuarioLogeado {
+			fmt.Println("¡¡ Error !! El usuario ", usuario.nombre, "esta logeado, debes cerrar sesion primero")
+		}
+		return
+	}
+
+}
+
+func comando_logout() {
+	for _, usuario := range usuarioLogeado {
+		fmt.Println("Sesion actual: ", usuario.nombre)
+	}
+
+	cerrar_sesion()
+	fmt.Println("")
+	fmt.Println("*                  Se ha cerrado la sesion                 *")
+	fmt.Println("")
 }
 
 func comando_execute(commandArray []string) {
@@ -2453,4 +2632,11 @@ func (lista *ListaDobleEnlazada) buscarPorID(id string) (bool, *NodoMount) {
 		}
 	}
 	return false, nil
+}
+
+func cerrar_sesion() {
+	for i := 0; i < len(usuarioLogeado); i++ {
+		usuarioLogeado[i] = NodoLogin{}
+	}
+	usuarioLogeado = usuarioLogeado[:0]
 }
