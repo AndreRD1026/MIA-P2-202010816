@@ -187,6 +187,14 @@ func ejecucion_comando(commandArray []string) {
 		comando_login(commandArray)
 	} else if data == "logout" {
 		comando_logout()
+	} else if data == "mkgrp" {
+		comando_mkgrp(commandArray)
+	} else if data == "rmgrp" {
+		comando_rmgrp(commandArray)
+	} else if data == "mkusr" {
+		comando_mkusr(commandArray)
+	} else if data == "rmusr" {
+		comando_rmusr(commandArray)
 	} else if data == "execute" {
 		comando_execute(commandArray)
 	} else {
@@ -2227,6 +2235,61 @@ func verDisco(path string) {
 	return
 }
 
+func verContenidoArchivo(path string, inicioP int) (string, string, error) {
+
+	Tam_EBR := EBR{}
+	EBR_Size := unsafe.Sizeof(Tam_EBR)
+
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+	}
+	defer file.Close()
+
+	nuevoinicio := inicioP + int(EBR_Size)
+
+	if _, err := file.Seek(int64(nuevoinicio), 0); err != nil {
+		fmt.Println(err)
+	}
+
+	var SB SuperBloque
+	if err := binary.Read(file, binary.LittleEndian, &SB); err != nil {
+		fmt.Println(err)
+	}
+
+	fsType := string(bytes.TrimRight(SB.S_inodes_count[:], string(0)))
+
+	n, err := strconv.Atoi(fsType)
+
+	BMInode := BitMapInodo{}
+
+	BmInode_size := unsafe.Sizeof(BMInode)
+	prueba := unsafe.Sizeof(SB)
+
+	otro := BloqueCarpetas{}
+
+	abr := unsafe.Sizeof(otro)
+
+	offset := int64(inicioP) + int64(prueba) + int64(n) + int64(BmInode_size+uintptr(n))
+	offset1 := offset + int64(2)*int64(binary.Size(Inodos{})) + int64(abr)
+
+	if _, err := file.Seek(int64(offset1), 0); err != nil {
+		fmt.Println(err)
+		//return
+	}
+
+	var Archivo BloqueArchivos
+	if err := binary.Read(file, binary.LittleEndian, &Archivo); err != nil {
+		fmt.Println(err)
+		//return
+	}
+
+	sakee := string(bytes.TrimRight(Archivo.B_content[:], string(0)))
+	ggs := string(bytes.TrimRight(SB.S_inodes_count[:], string(0)))
+	return sakee, ggs, nil
+
+}
+
 func verSB(path string, inicioP int) (string, error) {
 
 	Tam_EBR := EBR{}
@@ -2382,11 +2445,10 @@ func comando_login(commandArray []string) {
 				if strings.Contains(line, user_buscar) {
 					fields := strings.Split(line, ",")
 					//fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s, Contra: %s\n", fields[0], fields[1], fields[2], fields[3])
-					//fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s\n", fields[0], fields[1], fields[2])
+					fmt.Printf("Numero: %s, Tipo: %s, Grupo: %s\n", fields[0], fields[1], fields[2])
 					if fields[1] == "U" {
 						fmt.Printf("Es un usuario %s\n", fields[4])
-						if fields[2] == user_buscar && fields[4] == pass_buscar {
-							fmt.Println("Usuario y contra son iguales :D")
+						if fields[3] == user_buscar && fields[4] == pass_buscar {
 							usuarioLogeado = append(usuarioLogeado, NodoLogin{id: id_buscar, nombre: user_buscar})
 						} else {
 							fmt.Println("El usuario o contraseña no coincide ")
@@ -2395,7 +2457,6 @@ func comando_login(commandArray []string) {
 					}
 				}
 			}
-
 			fmt.Println("")
 			fmt.Println("*           Se ha iniciado sesion con el usuario: ", user_buscar, " 	*")
 			fmt.Println("")
@@ -2415,14 +2476,466 @@ func comando_login(commandArray []string) {
 }
 
 func comando_logout() {
-	for _, usuario := range usuarioLogeado {
-		fmt.Println("Sesion actual: ", usuario.nombre)
+	if len(usuarioLogeado) == 0 {
+		fmt.Println("¡¡ Error !! No hay ningun usuario con la sesion iniciada")
+	} else {
+		for _, usuario := range usuarioLogeado {
+			fmt.Println("Sesion actual: ", usuario.nombre)
+		}
+
+		cerrar_sesion()
+		fmt.Println("")
+		fmt.Println("*                  Se ha cerrado la sesion                 *")
+		fmt.Println("")
 	}
 
-	cerrar_sesion()
-	fmt.Println("")
-	fmt.Println("*                  Se ha cerrado la sesion                 *")
-	fmt.Println("")
+}
+
+func comando_mkgrp(commandArray []string) {
+	straux := ""
+	name_grupo := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">name=") {
+			straux = strings.Replace(data, ">name=", "", 1)
+			name_grupo = straux
+
+		}
+	}
+
+	if name_grupo == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un nombre para el grupo")
+		fmt.Println("")
+		return
+	}
+
+	for _, usuario := range usuarioLogeado {
+		if usuario.nombre == "root" {
+			fmt.Println("Si puede crear un grupo")
+
+			existe, nodo := miLista.buscarPorID(usuario.id)
+			if existe {
+				sakee, n, err := verContenidoArchivo(nodo.ruta, nodo.inicioparticion)
+				if err != nil {
+					// manejar error
+				}
+
+				caracteres_grupo := len(name_grupo)
+				if caracteres_grupo > 10 {
+					fmt.Println("¡¡ Error !! El nombre puede tener un maximo de 10 caracteres, el actual tiene : ", caracteres_grupo, " caracteres")
+					return
+				}
+
+				int_n, err := strconv.Atoi(n)
+
+				lines := strings.Split(sakee, "\n")
+
+				encontrado := false
+
+				for _, line := range lines {
+					if strings.Contains(line, name_grupo) {
+						fields := strings.Split(line, ",")
+						// //fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s, Contra: %s\n", fields[0], fields[1], fields[2], fields[3])
+						// //fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s\n", fields[0], fields[1], fields[2])
+						if fields[1] == "G" {
+							encontrado = true
+						}
+					}
+				}
+
+				if encontrado {
+					fmt.Println("¡¡ Error !! Ya existe ese grupo")
+					return
+				} else {
+					numfinal := 0
+
+					lines := strings.Split(sakee, "\n")
+					nums := []int{}
+					for _, line := range lines {
+						fields := strings.Split(line, ",")
+						if len(fields) >= 3 && fields[1] == "G" {
+							num, err := strconv.Atoi(fields[0])
+							if err == nil {
+								nums = append(nums, num)
+							}
+						}
+					}
+					if len(nums) > 0 {
+						max := findMax(nums)
+						numfinal = max + 1
+					} else {
+						fmt.Println("No se encontraron números de grupo (G)")
+					}
+					pruebas := strconv.Itoa(numfinal) + ",G," + name_grupo + "\n"
+
+					concat := sakee + pruebas
+					Archivo := BloqueArchivos{}
+					contenidoarchivo := concat
+					copy(Archivo.B_content[:], []byte(contenidoarchivo))
+
+					Escribir_BloqueArchivo(nodo.ruta, Archivo, nodo.inicioparticion, int_n)
+
+					fmt.Println("")
+					fmt.Println("*           Se ha agregado el grupo ", name_grupo, " al archivo        *")
+					fmt.Println("")
+
+				}
+
+			}
+
+		} else {
+			fmt.Println("¡¡ Error !! Este comando solo lo puede ejecutar el usuario root")
+		}
+	}
+
+}
+
+func comando_rmgrp(commandArray []string) {
+	straux := ""
+	name_grupo := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">name=") {
+			straux = strings.Replace(data, ">name=", "", 1)
+			name_grupo = straux
+
+		}
+	}
+
+	if name_grupo == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un nombre para el grupo a eliminar")
+		fmt.Println("")
+		return
+	}
+
+	for _, usuario := range usuarioLogeado {
+		if usuario.nombre == "root" {
+
+			existe, nodo := miLista.buscarPorID(usuario.id)
+			if existe {
+				sakee, n, err := verContenidoArchivo(nodo.ruta, nodo.inicioparticion)
+				if err != nil {
+					// manejar error
+				}
+
+				int_n, err := strconv.Atoi(n)
+
+				lineas := strings.Split(sakee, "\n")
+
+				encontrado := false
+
+				for i, linea := range lineas {
+					// Si la línea contiene "U"
+					if strings.Contains(linea, "G") {
+						campos := strings.Split(linea, ",")
+
+						if name_grupo == "root" || name_grupo == "ROOT" {
+							fmt.Println("¡¡ Error !! No se puede eliminar el grupo root")
+							return
+						}
+						if campos[2] == name_grupo {
+							encontrado = true
+							int_pp, err := strconv.Atoi(campos[0])
+							if int_pp == 0 {
+								fmt.Println("¡¡ Error !! No existe ese nombre de grupo")
+								return
+							}
+							numero, err := strconv.Atoi(campos[0])
+							if err != nil {
+								fmt.Println("Error convirtiendo número:", err)
+								return
+							}
+
+							fmt.Println("Que sale? ", numero)
+
+							// Actualizar el número a 0
+							campos[0] = "0"
+
+							// Unir los campos por coma
+							lineas[i] = strings.Join(campos, ",")
+						}
+					}
+				}
+
+				if encontrado == false {
+					fmt.Println("¡¡ Error !! No se encuentra un grupo con ese nombre")
+					return
+				}
+
+				// Unir las líneas por "\n"
+				resultado := strings.Join(lineas, "\n")
+
+				fmt.Println(resultado)
+
+				Archivo := BloqueArchivos{}
+				contenidoarchivo := resultado
+				copy(Archivo.B_content[:], []byte(contenidoarchivo))
+
+				Escribir_BloqueArchivo(nodo.ruta, Archivo, nodo.inicioparticion, int_n)
+
+				fmt.Println("")
+				fmt.Println("*           Se ha eliminado el grupo ", name_grupo, " del archivo        *")
+				fmt.Println("")
+
+			}
+		} else {
+			fmt.Println("¡¡ Error !! Este comando solo lo puede ejecutar el usuario root")
+		}
+	}
+}
+
+func comando_mkusr(commandArray []string) {
+	straux := ""
+	name_user := ""
+	pass_user := ""
+	name_grupo := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">user=") {
+			straux = strings.Replace(data, ">user=", "", 1)
+			name_user = straux
+
+		} else if strings.Contains(data, ">pwd=") {
+			straux = strings.Replace(data, ">pwd=", "", 1)
+			pass_user = straux
+
+		} else if strings.Contains(data, ">grp=") {
+			straux = strings.Replace(data, ">grp=", "", 1)
+			name_grupo = straux
+
+		}
+	}
+
+	if name_user == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un nombre para el usuario")
+		fmt.Println("")
+		return
+	}
+
+	if pass_user == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado una contraseña para el usuario")
+		fmt.Println("")
+		return
+	}
+
+	if name_grupo == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un nombre para el grupo")
+		fmt.Println("")
+		return
+	}
+
+	for _, usuario := range usuarioLogeado {
+		if usuario.nombre == "root" {
+			fmt.Println("Si puede crear un usuario")
+
+			existe, nodo := miLista.buscarPorID(usuario.id)
+			if existe {
+				sakee, n, err := verContenidoArchivo(nodo.ruta, nodo.inicioparticion)
+				if err != nil {
+					// manejar error
+				}
+
+				caracteres_usuario := len(name_user)
+				caracteres_contra := len(pass_user)
+				caracteres_grupo := len(name_grupo)
+				if caracteres_usuario > 10 {
+					fmt.Println("¡¡ Error !! El usuario puede tener un maximo de 10 caracteres, el actual tiene : ", caracteres_usuario, " caracteres")
+					return
+				}
+
+				if caracteres_contra > 10 {
+					fmt.Println("¡¡ Error !! La contraseña puede tener un maximo de 10 caracteres, la actual tiene : ", caracteres_usuario, " caracteres")
+					return
+				}
+
+				if caracteres_grupo > 10 {
+					fmt.Println("¡¡ Error !! El grupo puede tener un maximo de 10 caracteres, el actual tiene : ", caracteres_usuario, " caracteres")
+					return
+				}
+
+				int_n, err := strconv.Atoi(n)
+
+				fmt.Println(int_n)
+
+				lines := strings.Split(sakee, "\n")
+
+				encontrado := false
+
+				for _, line := range lines {
+					if strings.Contains(line, name_grupo) {
+						fields := strings.Split(line, ",")
+						// //fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s, Contra: %s\n", fields[0], fields[1], fields[2], fields[3])
+						// //fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s\n", fields[0], fields[1], fields[2])
+						if fields[1] == "G" {
+							encontrado = true
+						}
+					}
+				}
+
+				if encontrado == false {
+					fmt.Println("¡¡ Error !! No se encuentra el grupo")
+					return
+				} else {
+					numfinal := 0
+
+					lines := strings.Split(sakee, "\n")
+					nums := []int{}
+					for _, line := range lines {
+						fields := strings.Split(line, ",")
+						if len(fields) >= 3 && fields[1] == "U" {
+							num, err := strconv.Atoi(fields[0])
+							if err == nil {
+								nums = append(nums, num)
+							}
+						}
+					}
+					if len(nums) > 0 {
+						max := findMax(nums)
+						numfinal = max + 1
+					} else {
+						fmt.Println("No se encontraron números de grupo (U)")
+					}
+					pruebas := strconv.Itoa(numfinal) + ",U," + name_grupo + "," + name_user + "," + pass_user + "\n"
+
+					concat := sakee + pruebas
+					//fmt.Println("Sale ", concat)
+					Archivo := BloqueArchivos{}
+					contenidoarchivo := concat
+					copy(Archivo.B_content[:], []byte(contenidoarchivo))
+
+					Escribir_BloqueArchivo(nodo.ruta, Archivo, nodo.inicioparticion, int_n)
+
+					fmt.Println("")
+					fmt.Println("*           Se ha agregado el usuario ", name_user, " al archivo        *")
+					fmt.Println("")
+
+				}
+
+			}
+
+		} else {
+			fmt.Println("¡¡ Error !! Este comando solo lo puede ejecutar el usuario root")
+		}
+	}
+
+}
+
+func comando_rmusr(commandArray []string) {
+	straux := ""
+	name_user := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">user=") {
+			straux = strings.Replace(data, ">user=", "", 1)
+			name_user = straux
+
+		}
+	}
+
+	if name_user == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un nombre para el grupo a eliminar")
+		fmt.Println("")
+		return
+	}
+
+	for _, usuario := range usuarioLogeado {
+		if usuario.nombre == "root" {
+
+			existe, nodo := miLista.buscarPorID(usuario.id)
+			if existe {
+				sakee, n, err := verContenidoArchivo(nodo.ruta, nodo.inicioparticion)
+				if err != nil {
+					// manejar error
+				}
+
+				int_n, err := strconv.Atoi(n)
+
+				lineas := strings.Split(sakee, "\n")
+
+				encontrado := false
+
+				for i, linea := range lineas {
+					// Si la línea contiene "U"
+					if strings.Contains(linea, "U") {
+						campos := strings.Split(linea, ",")
+
+						if name_user == "root" || name_user == "ROOT" {
+							fmt.Println("¡¡ Error !! No se puede eliminar el usuario root")
+							return
+						}
+						if campos[3] == name_user {
+							encontrado = true
+							int_pp, err := strconv.Atoi(campos[0])
+							if int_pp == 0 {
+								fmt.Println("¡¡ Error !! No existe ese nombre de usuario")
+								return
+							}
+							numero, err := strconv.Atoi(campos[0])
+							if err != nil {
+								fmt.Println("Error convirtiendo número:", err)
+								return
+							}
+
+							fmt.Println("Que sale? ", numero)
+
+							// Actualizar el número a 0
+							campos[0] = "0"
+
+							// Unir los campos por coma
+							lineas[i] = strings.Join(campos, ",")
+						}
+					}
+				}
+
+				if encontrado == false {
+					fmt.Println("¡¡ Error !! No se encuentra un usuario con ese nombre")
+					return
+				}
+
+				// Unir las líneas por "\n"
+				resultado := strings.Join(lineas, "\n")
+
+				fmt.Println(resultado)
+
+				Archivo := BloqueArchivos{}
+				contenidoarchivo := resultado
+				copy(Archivo.B_content[:], []byte(contenidoarchivo))
+
+				Escribir_BloqueArchivo(nodo.ruta, Archivo, nodo.inicioparticion, int_n)
+
+				fmt.Println("")
+				fmt.Println("*           Se ha eliminado el usuario ", name_user, " del archivo        *")
+				fmt.Println("")
+
+			}
+		} else {
+			fmt.Println("¡¡ Error !! Este comando solo lo puede ejecutar el usuario root")
+		}
+	}
 }
 
 func comando_execute(commandArray []string) {
@@ -2639,4 +3152,14 @@ func cerrar_sesion() {
 		usuarioLogeado[i] = NodoLogin{}
 	}
 	usuarioLogeado = usuarioLogeado[:0]
+}
+
+func findMax(nums []int) int {
+	max := nums[0]
+	for _, n := range nums {
+		if n > max {
+			max = n
+		}
+	}
+	return max
 }
