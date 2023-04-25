@@ -3092,9 +3092,9 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) {
 	fmt.Println("D ", string(particion[3].Part_name[:]))
 
 	tipo_p1 := string(particion[0].Part_type[:])
-	// tipo_p2 := string(particion[0].Part_type[:])
-	// tipo_p3 := string(particion[0].Part_type[:])
-	// tipo_p4 := string(particion[0].Part_type[:])
+	tipo_p2 := string(particion[0].Part_type[:])
+	tipo_p3 := string(particion[0].Part_type[:])
+	tipo_p4 := string(particion[0].Part_type[:])
 
 	dot := "digraph G {\n"
 	dot = dot + "labelloc=\"t\"\n"
@@ -3109,15 +3109,67 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) {
 
 		string_sizeP1 := string(bytes.TrimRight(particion[0].Part_size[:], string(0)))
 		tamano_P1, err := strconv.Atoi(string_sizeP1)
+		string_sizeP2 := string(bytes.TrimRight(particion[1].Part_size[:], string(0)))
+		tamano_P2, err := strconv.Atoi(string_sizeP2)
+		string_sizeP3 := string(bytes.TrimRight(particion[2].Part_size[:], string(0)))
+		tamano_P3, err := strconv.Atoi(string_sizeP3)
+		string_sizeP4 := string(bytes.TrimRight(particion[3].Part_size[:], string(0)))
+		tamano_P4, err := strconv.Atoi(string_sizeP4)
+
+		salida2 := 0
+		salida3 := 0
+		salida4 := 0
 		if err != nil {
 			fmt.Println("Error:", err)
 		}
 		salida := (tamano_P1 * 100) / tamano
 		porcentaje1 := strconv.Itoa(salida)
-		// int tamp1 = (particion[0].part_s * 1024) ;
-		// int salida = ((tamp1 * 100 )/tamanoMBR);
-		// porcentaje1 = salida;
 		dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje1 + "%" + " del disco</td>"
+
+		//Particion 2
+
+		if tipo_p2 == "" {
+			resta := 100 - salida
+			espaciolibre := strconv.Itoa(resta)
+			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+		} else if tipo_p2 == "E" {
+			fmt.Println("Codigo aquí")
+		} else {
+			salida2 = (tamano_P2 * 100) / tamano
+			porcentaje2 := strconv.Itoa(salida2)
+			dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje2 + "%" + " del disco</td>"
+		}
+
+		// Particion 3
+
+		if tipo_p3 == "" {
+			resta := 100 - (salida + salida2)
+			espaciolibre := strconv.Itoa(resta)
+			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+		} else if tipo_p2 == "E" {
+			fmt.Println("Codigo aquí")
+		} else {
+			salida3 = (tamano_P3 * 100) / tamano
+			porcentaje3 := strconv.Itoa(salida3)
+			dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje3 + "%" + " del disco</td>"
+		}
+
+		// Particion 4
+
+		if tipo_p4 == "" {
+			resta := 100 - (salida + salida2 + salida3)
+			espaciolibre := strconv.Itoa(resta)
+			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+		} else if tipo_p2 == "E" {
+			fmt.Println("Codigo aquí")
+		} else {
+			salida4 = (tamano_P4 * 100) / tamano
+			porcentaje4 := strconv.Itoa(salida4)
+			dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje4 + "%" + " del disco</td>"
+			resta := 100 - (salida + salida2 + salida3 + salida4)
+			espaciolibre := strconv.Itoa(resta)
+			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+		}
 
 	}
 
@@ -3139,7 +3191,7 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) {
 		return
 	}
 
-	// comando_ejecutar := "dot -Tpng ReporteSB.dot -o " + directorio + nombreSinExt + ".png"
+	// comando_ejecutar := "dot -Tpng ReporteDisk.dot -o " + directorio + nombreSinExt + ".png"
 
 	// cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
 
