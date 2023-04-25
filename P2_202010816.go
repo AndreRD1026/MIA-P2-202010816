@@ -10,6 +10,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -195,6 +196,8 @@ func ejecucion_comando(commandArray []string) {
 		comando_mkusr(commandArray)
 	} else if data == "rmusr" {
 		comando_rmusr(commandArray)
+	} else if data == "rep" {
+		comando_rep(commandArray)
 	} else if data == "execute" {
 		comando_execute(commandArray)
 	} else {
@@ -405,10 +408,6 @@ func comando_mkdisk(commandArray []string) {
 	}
 
 	disco.Close()
-
-	// cout << "" << endl;
-	// cout << "*                 Disco creado con exito                   *" << endl;
-	// cout << "" << endl;
 
 	fmt.Println("")
 	fmt.Println("*                 Disco creado con exito                   *")
@@ -1872,7 +1871,8 @@ func crear_EXT2(nodoActual *NodoMount, n int) {
 	first_blo := int(binary.LittleEndian.Uint32(SP.S_firts_ino[:])) + n*int(size_Inode)
 	bm_inode_start := nodoActual.inicioparticion + int(size)
 	bm_block_start := int(binary.LittleEndian.Uint32(SP.S_bm_inode_start[:])) + n
-	inode_star := int(binary.LittleEndian.Uint32(SP.S_firts_ino[:]))
+	//inode_star := int(binary.LittleEndian.Uint32(SP.S_firts_ino[:]))
+	inode_star := first_in
 	block_start := int(binary.LittleEndian.Uint32(SP.S_inode_start[:])) + n*int(size_Inode)
 	copy(SP.S_filesystem_type[:], strconv.Itoa(2))
 	copy(SP.S_inodes_count[:], strconv.Itoa(n))
@@ -2066,7 +2066,7 @@ func EscribirBitMapInodos(path string, bmInodo []BitMapInodo, inicio int64, n in
 
 	for i := 0; i < n; i++ {
 		offset := int64(inicio) + int64(i)*int64(binary.Size(BitMapInodo{}))
-		offset1 := offset + int64(prueba)
+		offset1 := offset + int64(prueba) + 30
 		if _, err := file.Seek(offset1, 0); err != nil {
 			return err
 		}
@@ -2316,13 +2316,8 @@ func verSB(path string, inicioP int) (string, error) {
 	}
 
 	fsType := string(bytes.TrimRight(SB.S_inodes_count[:], string(0)))
-	// fsType1 := string(bytes.TrimRight(SB.S_mtime[:], string(0)))
-	// fsType2 := string(bytes.TrimRight(SB.S_magic[:], string(0)))
 
 	n, err := strconv.Atoi(fsType)
-	//fmt.Println("Inodes ", fsType)
-	// fmt.Println("Time", fsType1)
-	// fmt.Println("Magic", fsType2)
 
 	BMInode := BitMapInodo{}
 
@@ -2936,6 +2931,349 @@ func comando_rmusr(commandArray []string) {
 			fmt.Println("¡¡ Error !! Este comando solo lo puede ejecutar el usuario root")
 		}
 	}
+}
+
+func comando_rep(commandArray []string) {
+	straux := ""
+	name_rep := ""
+	rutaa := ""
+	id_buscar := ""
+	ruta_v := ""
+
+	for i := 0; i < len(commandArray); i++ {
+		data := commandArray[i]
+		// if strings.HasPrefix(data, ">") {
+		// 	// Convertir a minúsculas
+		// 	data = strings.ToLower(data)
+		// }
+
+		if strings.Contains(data, ">name=") {
+			straux = strings.Replace(data, ">name=", "", 1)
+			name_rep = straux
+
+		} else if strings.Contains(data, ">path=") {
+			straux = strings.Replace(data, ">path=", "", 1)
+			rutaa = straux
+
+		} else if strings.Contains(data, ">id=") {
+			straux = strings.Replace(data, ">id=", "", 1)
+			id_buscar = straux
+
+		} else if strings.Contains(data, ">ruta=") {
+			straux = strings.Replace(data, ">ruta=", "", 1)
+			ruta_v = straux
+
+		}
+	}
+
+	if name_rep == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un tipo de reporte ")
+		fmt.Println("")
+		return
+	}
+
+	if rutaa == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado una ruta para guardar el reporte ")
+		fmt.Println("")
+		return
+	}
+
+	if id_buscar == "" {
+		fmt.Println("¡¡ Error !! No se ha especificado un id para generar los datos del reporte ")
+		fmt.Println("")
+		return
+	}
+
+	if ruta_v == "" {
+		//Es opcional este parametro
+	}
+
+	if name_rep == "disk" || name_rep == "DISK" {
+		fmt.Println("Entra al reporte disk")
+		existe, nodo := miLista.buscarPorID(id_buscar)
+		if existe {
+			reporte_disk(nodo, rutaa)
+
+		} else {
+			fmt.Println("¡¡ Error !! No se encontró ningúna particion con ese ID")
+			return
+		}
+	} else if name_rep == "tree" || name_rep == "TREE" {
+		fmt.Println("Entra al reporte tree")
+		existe, nodo := miLista.buscarPorID(id_buscar)
+		if existe {
+			reporte_tree(nodo, rutaa)
+
+		} else {
+			fmt.Println("¡¡ Error !! No se encontró ningúna particion con ese ID")
+			return
+		}
+	} else if name_rep == "file" || name_rep == "FILE" {
+		fmt.Println("Entra al reporte file")
+	} else if name_rep == "sb" || name_rep == "SB" {
+		existe, nodo := miLista.buscarPorID(id_buscar)
+		if existe {
+			reporte_sb(nodo, rutaa)
+
+		} else {
+			fmt.Println("¡¡ Error !! No se encontró ningúna particion con ese ID")
+			return
+		}
+	} else {
+		fmt.Println("¡¡ Error !! el nombre de reporte no existe en este proyecto")
+		return
+	}
+
+}
+
+func reporte_disk(nodoActual *NodoMount, rutaa string) {
+
+	file, err := os.OpenFile(nodoActual.ruta, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(0), 0); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var PurbeaD MBR
+	if err := binary.Read(file, binary.LittleEndian, &PurbeaD); err != nil {
+		fmt.Println(err)
+		return
+	}
+	string_tamano := string(bytes.TrimRight(PurbeaD.Mbr_tamano[:], string(0)))
+	fmt.Println("Tam : ", string_tamano)
+
+	trimmed_string_tamano := strings.TrimRightFunc(string_tamano, func(r rune) bool { return r == '\x00' })
+	tamano, err := strconv.Atoi(trimmed_string_tamano)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	fmt.Println("Tamm ? ", tamano)
+
+	nombreedisco := filepath.Base(nodoActual.ruta)
+	nombre := filepath.Base(rutaa)                                   // obtiene el nombre del archivo con la extensión
+	nombreSinExt := strings.TrimSuffix(nombre, filepath.Ext(nombre)) // remueve la extensión
+
+	// Creacion, escritura y cierre de archivo
+	directorio := rutaa[:strings.LastIndex(rutaa, "/")+1]
+
+	if _, err := os.Stat(directorio); os.IsNotExist(err) {
+		// la ruta no existe, se debe crear
+		if err := os.MkdirAll(directorio, 0755); err != nil {
+			panic(err)
+		}
+
+		if err := os.Chmod(directorio, 0777); err != nil {
+			panic(err)
+		}
+	} else {
+		// la ruta ya existe, se puede continuar
+	}
+	fmt.Println(nombreSinExt)
+
+	discop := PurbeaD
+
+	particion := [4]Partition{
+		discop.Mbr_partition_1,
+		discop.Mbr_partition_2,
+		discop.Mbr_partition_3,
+		discop.Mbr_partition_4,
+	}
+
+	fmt.Println("A ", string(particion[0].Part_name[:]))
+	fmt.Println("B ", string(particion[1].Part_name[:]))
+	fmt.Println("C ", string(particion[2].Part_name[:]))
+	fmt.Println("D ", string(particion[3].Part_name[:]))
+
+	tipo_p1 := string(particion[0].Part_type[:])
+	// tipo_p2 := string(particion[0].Part_type[:])
+	// tipo_p3 := string(particion[0].Part_type[:])
+	// tipo_p4 := string(particion[0].Part_type[:])
+
+	dot := "digraph G {\n"
+	dot = dot + "labelloc=\"t\"\n"
+	dot = dot + "label=\"" + nombreedisco + "\"\n"
+	dot = dot + "parent [\n"
+	dot = dot + "shape=plaintext\n"
+	dot = dot + "label=<\n"
+	dot = dot + "<table border=\"1\" cellborder=\"1\">\n"
+	dot = dot + "<tr> <td rowspan='3'>MBR</td>\n"
+
+	if tipo_p1 == "P" {
+
+		string_sizeP1 := string(bytes.TrimRight(particion[0].Part_size[:], string(0)))
+		tamano_P1, err := strconv.Atoi(string_sizeP1)
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
+		salida := (tamano_P1 * 100) / tamano
+		porcentaje1 := strconv.Itoa(salida)
+		// int tamp1 = (particion[0].part_s * 1024) ;
+		// int salida = ((tamp1 * 100 )/tamanoMBR);
+		// porcentaje1 = salida;
+		dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje1 + "%" + " del disco</td>"
+
+	}
+
+	dot = dot + "</tr>\n"
+	dot = dot + "</table>\n"
+	dot = dot + ">];\n"
+	dot = dot + "}\n"
+
+	archivo, err := os.Create("ReporteDisk.dot")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer archivo.Close()
+
+	_, err = archivo.WriteString(dot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// comando_ejecutar := "dot -Tpng ReporteSB.dot -o " + directorio + nombreSinExt + ".png"
+
+	// cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
+
+	// err = cmd.Run()
+	// if err != nil {
+	// 	fmt.Println("Error al ejecutar el comando:", err)
+	// 	return
+	// }
+
+	fmt.Println("")
+	fmt.Println("*               Reporte Disk creado con exito              *")
+	fmt.Println("")
+
+}
+
+func reporte_tree(nodoActual *NodoMount, rutaa string) {
+	fmt.Println("Aqui va el codigo para el tree")
+}
+
+func reporte_sb(nodoActual *NodoMount, rutaa string) {
+
+	Tam_EBR := EBR{}
+	EBR_Size := unsafe.Sizeof(Tam_EBR)
+
+	file, err := os.OpenFile(nodoActual.ruta, os.O_RDONLY, 0644)
+	if err != nil {
+		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+		return
+	}
+	defer file.Close()
+
+	nuevoinicio := nodoActual.inicioparticion + int(EBR_Size)
+
+	if _, err := file.Seek(int64(nuevoinicio), 0); err != nil {
+		fmt.Println(err)
+	}
+
+	var SB SuperBloque
+	if err := binary.Read(file, binary.LittleEndian, &SB); err != nil {
+		fmt.Println(err)
+	}
+
+	sb_files := string(bytes.TrimRight(SB.S_filesystem_type[:], string(0)))
+	sb_inodes := string(bytes.TrimRight(SB.S_inodes_count[:], string(0)))
+	sb_block := string(bytes.TrimRight(SB.S_blocks_count[:], string(0)))
+	sb_free_block := string(bytes.TrimRight(SB.S_free_blocks_count[:], string(0)))
+	sb_free_inodes := string(bytes.TrimRight(SB.S_free_inodes_count[:], string(0)))
+	sb_mtime := string(bytes.TrimRight(SB.S_mtime[:], string(0)))
+	sb_mnt := string(bytes.TrimRight(SB.S_mnt_count[:], string(0)))
+	sb_magic := string(bytes.TrimRight(SB.S_magic[:], string(0)))
+	sb_inode_size := string(bytes.TrimRight(SB.S_inode_size[:], string(0)))
+	sb_block_size := string(bytes.TrimRight(SB.S_block_size[:], string(0)))
+	sb_first_ino := string(bytes.TrimRight(SB.S_firts_ino[:], string(0)))
+	sb_first_blo := string(bytes.TrimRight(SB.S_first_blo[:], string(0)))
+	sb_bm_inode := string(bytes.TrimRight(SB.S_bm_inode_start[:], string(0)))
+	sb_bm_block := string(bytes.TrimRight(SB.S_bm_block_start[:], string(0)))
+	sb_inode_start := string(bytes.TrimRight(SB.S_inode_start[:], string(0)))
+	sb_block_start := string(bytes.TrimRight(SB.S_block_start[:], string(0)))
+
+	nombreedisco := filepath.Base(nodoActual.ruta)
+	nombre := filepath.Base(rutaa)                                   // obtiene el nombre del archivo con la extensión
+	nombreSinExt := strings.TrimSuffix(nombre, filepath.Ext(nombre)) // remueve la extensión
+
+	// Creacion, escritura y cierre de archivo
+	directorio := rutaa[:strings.LastIndex(rutaa, "/")+1]
+
+	if _, err := os.Stat(directorio); os.IsNotExist(err) {
+		// la ruta no existe, se debe crear
+		if err := os.MkdirAll(directorio, 0755); err != nil {
+			panic(err)
+		}
+
+		if err := os.Chmod(directorio, 0777); err != nil {
+			panic(err)
+		}
+	} else {
+		// la ruta ya existe, se puede continuar
+	}
+
+	dot := "digraph G {\n"
+	dot = dot + "labelloc=\"t\"\n"
+	dot = dot + "label=\"" + nombreedisco + "\"\n"
+	dot = dot + "parent [\n"
+	dot = dot + "shape=plaintext\n"
+	dot = dot + "label=<\n"
+	dot = dot + "<table border=\"1\" cellborder=\"1\">\n"
+	dot = dot + "<tr><td bgcolor=\"darkgreen\" colspan=\"3\">REPORTE DE SUPERBLOQUE</td></tr>\n"
+	dot = dot + "<tr><td port='fl'>s_filesystem_type</td><td port='siz1'>" + sb_files + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port=\"count\">s_inodes_count</td><td bgcolor=\"forestgreen\" port=\"siz17\">" + sb_inodes + "</td></tr>\n"
+	dot = dot + "<tr><td port='bcount'>s_blocks_count</td><td port='siz2'>" + sb_block + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port=\"freeblocks\">s_free_blocks_count</td><td bgcolor=\"forestgreen\" port=\"siz16\">" + sb_free_block + "</td></tr>\n"
+	dot = dot + "<tr><td port='freeinodes'>s_free_inodes_count</td><td port='siz3'>" + sb_free_inodes + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port=\"mounttime\">s_mtime</td><td bgcolor=\"forestgreen\" port=\"size15\">" + sb_mtime + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port='mountcount'>s_mnt_count</td><td bgcolor=\"forestgreen\" port='siz14'>" + sb_mnt + "</td></tr>\n"
+	dot = dot + "<tr><td port='magic'>s_magic</td><td port='siz5'>" + sb_magic + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port=\"inodes\">s_inode_s</td><td bgcolor=\"forestgreen\" port=\"siz13\">" + sb_inode_size + "</td></tr>\n"
+	dot = dot + "<tr><td port='sblock'>s_block_s</td><td port='siz6'>" + sb_block_size + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port=\"sfirstino\">s_firts_ino</td><td bgcolor=\"forestgreen\" port=\"siz12\">" + sb_first_ino + "</td></tr>\n"
+	dot = dot + "<tr><td port='sfirstblo'>s_first_blo</td><td port='siz7'>" + sb_first_blo + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port='bminodes'>s_bm_inode_start</td><td bgcolor=\"forestgreen\" port='siz11'>" + sb_bm_inode + "</td></tr>\n"
+	dot = dot + "<tr><td port='bmblocks'>s_bm_block_start</td><td port='siz8'>" + sb_bm_block + "</td></tr>\n"
+	dot = dot + "<tr><td bgcolor=\"forestgreen\" port='inodestart'>s_inode_start</td><td bgcolor=\"forestgreen\" port='siz10'>" + sb_inode_start + "</td></tr>\n"
+	dot = dot + "<tr><td port='blockstart'>s_block_start</td><td port='siz9'>" + sb_block_start + "</td></tr>\n"
+	dot = dot + "</table>\n"
+	dot = dot + ">];\n"
+	dot = dot + "}\n"
+
+	archivo, err := os.Create("ReporteSB.dot")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer archivo.Close()
+
+	_, err = archivo.WriteString(dot)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	comando_ejecutar := "dot -Tpng ReporteSB.dot -o " + directorio + nombreSinExt + ".png"
+
+	cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
+
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("Error al ejecutar el comando:", err)
+		return
+	}
+
+	fmt.Println("")
+	fmt.Println("*          Reporte SuperBloque creado con exito            *")
+	fmt.Println("")
+
 }
 
 func comando_execute(commandArray []string) {
