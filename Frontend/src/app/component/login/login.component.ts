@@ -7,4 +7,19 @@ import { Component } from '@angular/core';
 })
 export class LoginComponent {
 
+  idparticion = "";
+  user = "";
+  pwd = "";
+
+  constructor() { }
+
+  ngOnInit(): void {
+  }
+
+  ingresar() {
+    console.log("ID Particion: ", this.idparticion);
+    console.log("User: ", this.user);
+    console.log("Password: ", this.pwd);
+  }
+
 }
