@@ -8,19 +8,28 @@ import { LoginComponent } from './component/login/login.component';
 
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { ToastrModule } from 'ngx-toastr';
+import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
+import { UsuarioComponent } from './component/usuario/usuario.component';
+
 
 @NgModule({
   declarations: [
     AppComponent,
     InicioComponent,
-    LoginComponent
+    LoginComponent,
+    UsuarioComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     FormsModule,
     ReactiveFormsModule,
-    HttpClientModule
+    HttpClientModule,
+    BrowserAnimationsModule,
+    SweetAlert2Module.forRoot(),
+    ToastrModule.forRoot()
   ],
   providers: [],
   bootstrap: [AppComponent]

@@ -136,6 +136,12 @@ type cmdstruct struct {
 	Cmd string `json:"cmd"`
 }
 
+type LoginRequest struct {
+	Id   string `json:"id"`
+	User string `json:"user"`
+	Pass string `json:"pass"`
+}
+
 func main() {
 	//analizar()
 
@@ -150,6 +156,25 @@ func main() {
 		respuesta = split_comando(Content.Cmd)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"result": "` + respuesta + `" }`))
+	})
+
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var Prrueba LoginRequest
+		respuesta := ""
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &Prrueba)
+		respuesta = nuevologin(Prrueba.Id, Prrueba.User, Prrueba.Pass)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result_log": "` + respuesta + `" }`))
+
+		// decoder := json.NewDecoder(r.Body)
+		// var request LoginRequest
+		// err := decoder.Decode(&request)
+		// if err != nil {
+		// 	// handle error
+		// }
+		// // Use request.Id, request.User, and request.Pass
 	})
 
 	fmt.Println("Server ON in port 5000")
@@ -203,6 +228,31 @@ func split_comando(comando string) string {
 	// Ejecicion de comando leido
 	return ejecucion_comando(commandArray)
 }
+
+// func split_comando(comando string) string {
+// 	var commandArray []string
+// 	// Eliminacion de saltos de linea
+// 	comando = strings.Replace(comando, "\n", "", 1)
+// 	comando = strings.Replace(comando, "\r", "", 1)
+
+// 	// Guardado de parametros
+
+// 	if strings.Contains(comando, "mostrar") {
+// 		// indiceComentario := strings.Index(comando, "#")
+
+// 		// // si hay un comentario, obtenerlo
+// 		// if indiceComentario >= 0 {
+// 		// 	comentario := comando[indiceComentario+1:]
+// 		// 	// imprimir el comentario
+// 		// 	fmt.Println("Comentario encontrado ->", comentario)
+// 		// }
+// 		commandArray = append(commandArray, comando)
+// 	} else {
+// 		commandArray = strings.Split(comando, " ")
+// 	}
+// 	// Ejecicion de comando leido
+// 	return ejecucion_comando(commandArray)
+// }
 
 func ejecucion_comando(commandArray []string) string {
 	respuesta := ""
@@ -2462,6 +2512,68 @@ func comando_login(commandArray []string) string {
 		}
 		return respuesta
 	}
+
+	return respuesta
+
+}
+
+func nuevologin(id_buscar string, user_buscar string, pass_buscar string) string {
+	respuesta := ""
+
+	fmt.Println("Que llega? ", id_buscar)
+	fmt.Println("Que llega? ", user_buscar)
+	fmt.Println("Que llega? ", pass_buscar)
+	// Verificar si la lista está vacía
+	if len(usuarioLogeado) == 0 {
+		existe, nodo := miLista.buscarPorID(id_buscar)
+		if existe {
+
+			// Se lee el contenido del primer archivo
+			sakee, err := verSB(nodo.ruta, nodo.inicioparticion)
+			if err != nil {
+				// manejar error
+			}
+
+			lines := strings.Split(sakee, "\n")
+
+			for _, line := range lines {
+				if strings.Contains(line, user_buscar) {
+					fields := strings.Split(line, ",")
+					//fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s, Contra: %s\n", fields[0], fields[1], fields[2], fields[3])
+					fmt.Printf("Numero: %s, Tipo: %s, Grupo: %s\n", fields[0], fields[1], fields[2])
+					if fields[1] == "U" {
+						fmt.Printf("Es un usuario %s\n", fields[4])
+						if fields[3] == user_buscar && fields[4] == pass_buscar {
+							usuarioLogeado = append(usuarioLogeado, NodoLogin{id: id_buscar, nombre: user_buscar})
+						} else {
+							fmt.Println("El usuario o contraseña no coincide ")
+							respuesta = "El usuario o contraseña no coincide "
+							return respuesta
+						}
+					}
+				}
+			}
+			fmt.Println("")
+			fmt.Println("*           Se ha iniciado sesion con el usuario: ", user_buscar, " 	*")
+			fmt.Println("")
+			//respuesta = "*           Se ha iniciado sesion con el usuario: " + user_buscar + " 	*"
+			respuesta = "OK"
+
+		} else {
+			fmt.Println("No se encontró ningúna particion con ese ID")
+			respuesta = "No se encontró ningúna particion con ese ID"
+			return respuesta
+		}
+
+	} else {
+		for _, usuario := range usuarioLogeado {
+			fmt.Println("¡¡ Error !! El usuario ", usuario.nombre, " esta logeado, debes cerrar sesion primero")
+			respuesta = "¡¡ Error !! El usuario " + usuario.nombre + " esta logeado, debes cerrar sesion primero"
+		}
+		return respuesta
+	}
+
+	//respuesta = "OK"
 
 	return respuesta
 
