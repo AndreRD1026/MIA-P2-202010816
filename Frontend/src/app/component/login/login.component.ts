@@ -36,27 +36,10 @@ export class LoginComponent {
     //let avr = this.idparticion.trim()
 
     this.service.postLogin(this.idparticion, this.user, this.pwd).subscribe(async (res: any) => {
-      //this.salida += await res.result + "\n";
-      //const retorno = await res.result;
+      let mensaje = res.result_log
+      console.log(mensaje);
 
-      // let retorno = JSON.stringify(res);
-
-      // let respuesta = JSON.parse(res);
-      // this.retorno = respuesta.result_log;
-      
-      // console.log(this.retorno)
-
-      try {
-        const data = JSON.parse(res.result);
-        this.retorno = data.result_log;
-        console.log(this.retorno);
-        
-      } catch (e) {
-        console.log(e);
-        this.retorno = 'Error al procesar la respuesta del servidor';
-      }
-
-      switch (this.retorno) {
+      switch (mensaje) {
         case "OK":
           Swal.fire({
             title: ':D',
@@ -68,8 +51,14 @@ export class LoginComponent {
           })
           this.router.navigate(['/usuario'])
           break
-        case "El usuario o contraseña no coincide ":
-          console.log("Entra en el segundo");
+        case "NO":
+          //console.log("Entra en el segundo");
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops... Algo salió mal',
+            text: 'ID/Usuario/contraseña no encontrado',
+            footer: '<a>Revisa tus credenciales correctamente</a>'
+          })
           break
           
         default:

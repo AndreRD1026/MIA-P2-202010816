@@ -9,8 +9,12 @@ export class ProyectoService {
   // constructor() { }
   constructor(private httpClient: HttpClient) { }
 
+  // postEntrada(entrada: string) {
+  //   return this.httpClient.post("http://localhost:5000/analizar", { Cmd: entrada });
+  // }
+
   postEntrada(entrada: string) {
-    return this.httpClient.post("http://localhost:5000/analizar", { Cmd: entrada });
+    return this.httpClient.post("http://192.168.1.15:5000/analizar", { Cmd: entrada });
   }
 
   postLogin(id: string, user: string, pass: string) {
@@ -21,4 +25,18 @@ export class ProyectoService {
     };
     return this.httpClient.post("http://localhost:5000/login", body);
   }
+
+  postLogout(){
+    let id = ""
+    return this.httpClient.post("http://localhost:5000/logout", id);
+  }
+
+  // postLogout() {
+  //   return this.httpClient.post("http://localhost:5000/logout")
+  //     .pipe(
+  //       map((response: any) => {
+  //         return response.result;
+  //       })
+  //     );
+  // }
 }
