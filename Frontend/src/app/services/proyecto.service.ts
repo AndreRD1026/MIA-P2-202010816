@@ -13,9 +13,15 @@ export class ProyectoService {
   //   return this.httpClient.post("http://localhost:5000/analizar", { Cmd: entrada });
   // }
 
+  //18.212.40.106
+
   postEntrada(entrada: string) {
-    return this.httpClient.post("http://192.168.1.15:5000/analizar", { Cmd: entrada });
+    return this.httpClient.post("http://44.201.152.11:5000/analizar", { Cmd: entrada });
   }
+
+  // postEntrada(entrada: string) {
+  //   return this.httpClient.post("http://192.168.1.15:5000/analizar", { Cmd: entrada });
+  // }
 
   postLogin(id: string, user: string, pass: string) {
     const body = {

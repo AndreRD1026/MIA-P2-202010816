@@ -478,19 +478,6 @@ func comando_mkdisk(commandArray []string) string {
 	copy(Disco.Mbr_partition_3.Part_name[:], "")
 	copy(Disco.Mbr_partition_4.Part_name[:], "")
 
-	// // Conversion de struct a bytes
-	// ejmbyte := struct_to_bytes(Disco)
-	// // Cambio de posicion de puntero dentro del archivo
-	// newpos, err := disco.Seek(0, os.SEEK_SET)
-	// if err != nil {
-	// 	msg_error(err)
-	// }
-	// // Escritura de struct en archivo binario
-	// _, err = disco.WriteAt(ejmbyte, newpos)
-	// if err != nil {
-	// 	msg_error(err)
-	// }
-
 	file, err := os.OpenFile(ruta, os.O_RDWR, 0644)
 	if err != nil {
 		fmt.Println("¡¡ Error !! No se pudo acceder al disco")
@@ -540,36 +527,44 @@ func comando_rmdisk(commandArray []string) string {
 		return respuesta
 	}
 
-	directorio := path.Dir(ruta)
-	nombreCompleto := filepath.Base(ruta)
-	ultimoDato := strings.Split(nombreCompleto, "/")[len(strings.Split(nombreCompleto, "/"))-1]
+	// Verificar si el archivo existe
+	if _, err := os.Stat(ruta); os.IsNotExist(err) {
+		fmt.Println("¡¡ Error !! El archivo no existe")
+		respuesta = "¡¡ Error !! El archivo no existe"
+		return respuesta
+	} else {
+		// Eliminar el archivo
+		directorio := path.Dir(ruta)
+		nombreCompleto := filepath.Base(ruta)
+		ultimoDato := strings.Split(nombreCompleto, "/")[len(strings.Split(nombreCompleto, "/"))-1]
 
-	err := filepath.Walk(directorio, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Si el archivo coincide con el nombre que desea eliminar, eliminarlo
-		if info.Name() == ultimoDato {
-			if err := os.Remove(path); err != nil {
+		err := filepath.Walk(directorio, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
 				return err
 			}
-			fmt.Println("")
-			fmt.Println("*               Disco eliminado con exito                  *")
-			fmt.Println("")
 
+			// Si el archivo coincide con el nombre que desea eliminar, eliminarlo
+			if info.Name() == ultimoDato {
+				if err := os.Remove(path); err != nil {
+					return err
+				}
+				fmt.Println("")
+				fmt.Println("*               Disco eliminado con exito                  *")
+				fmt.Println("")
+				respuesta = "*               Disco eliminado con exito                  *"
+
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			fmt.Println("¡¡ Error !! No se ha encontrado el archivo", err)
+			respuesta = "¡¡ Error !! No se ha encontrado el archivo"
+			return respuesta
 		}
-
-		return nil
-	})
-
-	if err != nil {
-		fmt.Println("¡¡ Error !! No se ha encontrado el archivo", err)
-		respuesta = "¡¡ Error !! No se ha encontrado el archivo"
-		return respuesta
 	}
 
-	respuesta = "*               Disco eliminado con exito                  *"
 	return respuesta
 
 }

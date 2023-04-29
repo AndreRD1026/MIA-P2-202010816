@@ -22,18 +22,40 @@ export class InicioComponent {
     this.entrada = await file.text();
   }
 
-  ejecutar() {
-    this.salida = "--- Resultados ---\n";
+
+  ejecutar(){
     let split_entrada = this.entrada.split("\n");
-    for (let i = 0; i < split_entrada.length; i++) {
-      const cmd = split_entrada[i];
-      if (cmd != "") {
-        this.service.postEntrada(cmd).subscribe(async (res: any) => {
-          this.salida += await res.result + "\n";
-        });
+for (let i = 0; i < split_entrada.length; i++) {
+  const cmd = split_entrada[i];
+  if (cmd != "") {
+    // Buscar un comentario en la línea de comando
+    const regex = /([^#]*)#(.*)/;
+    const match = regex.exec(cmd);
+    let cmdToSend = match ? match[1].trim() : cmd.trim(); // Obtener el comando sin el comentario
+    let comment = match ? match[2].trim() : ''; // Obtener el comentario si existe
+
+    this.service.postEntrada(cmdToSend).subscribe(async (res: any) => {
+      this.salida += await res.result + "\n";
+      if (comment) {
+        this.salida += `# Comentario encontrado -> ${comment}\n`; // Agregar el comentario a la salida
       }
-    }
+    });
   }
+}
+  }
+
+  // ejecutar() {
+  //   this.salida = "--- Resultados ---\n";
+  //   let split_entrada = this.entrada.split("\n");
+  //   for (let i = 0; i < split_entrada.length; i++) {
+  //     const cmd = split_entrada[i];
+  //     if (cmd != "") {
+  //       this.service.postEntrada(cmd).subscribe(async (res: any) => {
+  //         this.salida += await res.result + "\n";
+  //       });
+  //     }
+  //   }
+  // }
 
 // ejecutar() {
 //   // if (this.entrada === "") {
