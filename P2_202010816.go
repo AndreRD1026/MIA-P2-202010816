@@ -1163,6 +1163,7 @@ func comando_fkdisk(commandArray []string) string {
 						return respuesta
 					}
 				} else {
+					fmt.Println("Entra el otro")
 
 					var AnteriorEBR EBR
 					var SiguienteEBR EBR
@@ -1181,8 +1182,10 @@ func comando_fkdisk(commandArray []string) string {
 						respuesta = "¡¡ Error !! Ya está en uso ese nombre en una particion"
 						return respuesta
 					} else {
-						tamanofinal := int_size_particion1 - (int_anterior + tamano_archivo1)
+						tamanofinal := int_size_particion1 - (int_anterior)
 						nuevostart := int_inicio_particion1 + int_anterior + 1
+
+						fmt.Println("? ", tamanofinal)
 
 						if tamanofinal >= tamano_archivo1 {
 
@@ -1216,12 +1219,16 @@ func comando_fkdisk(commandArray []string) string {
 								return err.Error()
 							}
 
-						} else {
 							fmt.Println("")
 							fmt.Println("*                Particion Logica creada                      *")
 							fmt.Println("")
 							respuesta = "*                Particion Logica creada                      *"
 
+							return respuesta
+
+						} else {
+							fmt.Println("¡¡ Error !!")
+							respuesta = "¡¡ Error !!"
 							return respuesta
 						}
 
@@ -1326,7 +1333,7 @@ func comando_fkdisk(commandArray []string) string {
 						respuesta = "¡¡ Error !! Ya está en uso ese nombre en una particion"
 						return respuesta
 					} else {
-						tamanofinal := int_size_particion2 - (int_anterior + tamano_archivo1)
+						tamanofinal := int_size_particion2 - (int_anterior)
 						nuevostart := int_inicio_particion2 + int_anterior + 1
 
 						if tamanofinal >= tamano_archivo1 {
@@ -1471,7 +1478,7 @@ func comando_fkdisk(commandArray []string) string {
 						respuesta = "¡¡ Error !! Ya está en uso ese nombre en una particion"
 						return respuesta
 					} else {
-						tamanofinal := int_size_particion3 - (int_anterior + tamano_archivo1)
+						tamanofinal := int_size_particion3 - (int_anterior)
 						nuevostart := int_inicio_particion3 + int_anterior + 1
 
 						if tamanofinal >= tamano_archivo1 {
@@ -1616,7 +1623,7 @@ func comando_fkdisk(commandArray []string) string {
 						respuesta = "¡¡ Error !! Ya está en uso ese nombre en una particion"
 						return respuesta
 					} else {
-						tamanofinal := int_size_particion4 - (int_anterior + tamano_archivo1)
+						tamanofinal := int_size_particion4 - (int_anterior)
 						nuevostart := int_inicio_particion4 + int_anterior + 1
 
 						if tamanofinal >= tamano_archivo1 {
@@ -3573,7 +3580,7 @@ func comando_rep(commandArray []string) string {
 		fmt.Println("Entra al reporte disk")
 		existe, nodo := miLista.buscarPorID(id_buscar)
 		if existe {
-			reporte_disk(nodo, rutaa)
+			respuesta = reporte_disk(nodo, rutaa)
 
 		} else {
 			fmt.Println("¡¡ Error !! No se encontró ningúna particion con ese ID")
@@ -3584,7 +3591,7 @@ func comando_rep(commandArray []string) string {
 		fmt.Println("Entra al reporte tree")
 		existe, nodo := miLista.buscarPorID(id_buscar)
 		if existe {
-			reporte_tree(nodo, rutaa)
+			respuesta = reporte_tree(nodo, rutaa)
 
 		} else {
 			fmt.Println("¡¡ Error !! No se encontró ningúna particion con ese ID")
@@ -3677,9 +3684,11 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) string {
 	fmt.Println("D ", string(particion[3].Part_name[:]))
 
 	tipo_p1 := string(particion[0].Part_type[:])
-	tipo_p2 := string(particion[0].Part_type[:])
-	tipo_p3 := string(particion[0].Part_type[:])
-	tipo_p4 := string(particion[0].Part_type[:])
+	tipo_p2 := string(particion[1].Part_type[:])
+	tipo_p3 := string(particion[2].Part_type[:])
+	tipo_p4 := string(particion[3].Part_type[:])
+
+	ajuste_p1 := string(particion[0].Part_fit[:])
 
 	dot := "digraph G {\n"
 	dot = dot + "labelloc=\"t\"\n"
@@ -3690,201 +3699,469 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) string {
 	dot = dot + "<table border=\"1\" cellborder=\"1\">\n"
 	dot = dot + "<tr> <td rowspan='3'>MBR</td>\n"
 
-	if tipo_p1 == "P" {
+	existeExtendida1 := false
+	existeExtendida2 := false
+	existeExtendida3 := false
+	existeExtendida4 := false
 
-		string_sizeP1 := string(bytes.TrimRight(particion[0].Part_size[:], string(0)))
-		tamano_P1, err := strconv.Atoi(string_sizeP1)
-		string_sizeP2 := string(bytes.TrimRight(particion[1].Part_size[:], string(0)))
-		tamano_P2, err := strconv.Atoi(string_sizeP2)
-		string_sizeP3 := string(bytes.TrimRight(particion[2].Part_size[:], string(0)))
-		tamano_P3, err := strconv.Atoi(string_sizeP3)
-		string_sizeP4 := string(bytes.TrimRight(particion[3].Part_size[:], string(0)))
-		tamano_P4, err := strconv.Atoi(string_sizeP4)
+	string_sizeP1 := string(bytes.TrimRight(particion[0].Part_size[:], string(0)))
+	tamano_P1, err := strconv.Atoi(string_sizeP1)
+	string_sizeP2 := string(bytes.TrimRight(particion[1].Part_size[:], string(0)))
+	tamano_P2, err := strconv.Atoi(string_sizeP2)
+	string_sizeP3 := string(bytes.TrimRight(particion[2].Part_size[:], string(0)))
+	tamano_P3, err := strconv.Atoi(string_sizeP3)
+	string_sizeP4 := string(bytes.TrimRight(particion[3].Part_size[:], string(0)))
+	tamano_P4, err := strconv.Atoi(string_sizeP4)
 
-		salida2 := 0
-		salida3 := 0
-		salida4 := 0
-		if err != nil {
-			fmt.Println("Error:", err)
+	salida := 0
+	salida2 := 0
+	salida3 := 0
+	salida4 := 0
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	if ajuste_p1 != "" {
+		if tipo_p1 == "E" {
+			salida = (tamano_P1 * 100) / tamano
+			dot = dot + "<td colspan=\"6\" rowspan=\"1\">Extendida</td>"
+			existeExtendida1 = true
+		} else {
+			salida = (tamano_P1 * 100) / tamano
+			porcentaje1 := strconv.Itoa(salida)
+			dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje1 + "%" + " del disco</td>"
 		}
-		salida := (tamano_P1 * 100) / tamano
-		porcentaje1 := strconv.Itoa(salida)
-		dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje1 + "%" + " del disco</td>"
-
-		//Particion 2
 
 		if tipo_p2 == "" {
 			resta := 100 - salida
 			espaciolibre := strconv.Itoa(resta)
 			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+
 		} else if tipo_p2 == "E" {
-			fmt.Println("Codigo aquí")
+			salida2 = (tamano_P2 * 100) / tamano
+			dot = dot + "<td colspan=\"6\" rowspan=\"1\">Extendida</td>"
+			existeExtendida2 = true
 		} else {
 			salida2 = (tamano_P2 * 100) / tamano
 			porcentaje2 := strconv.Itoa(salida2)
 			dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje2 + "%" + " del disco</td>"
 		}
 
-		// Particion 3
-
 		if tipo_p3 == "" {
 			resta := 100 - (salida + salida2)
 			espaciolibre := strconv.Itoa(resta)
 			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
-		} else if tipo_p2 == "E" {
-			fmt.Println("Codigo aquí")
+		} else if tipo_p3 == "E" {
+			salida3 = (tamano_P3 * 100) / tamano
+			dot = dot + "<td colspan=\"6\" rowspan=\"1\">Extendida</td>"
+			existeExtendida3 = true
 		} else {
 			salida3 = (tamano_P3 * 100) / tamano
 			porcentaje3 := strconv.Itoa(salida3)
 			dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje3 + "%" + " del disco</td>"
 		}
 
-		// Particion 4
-
 		if tipo_p4 == "" {
 			resta := 100 - (salida + salida2 + salida3)
 			espaciolibre := strconv.Itoa(resta)
 			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
-		} else if tipo_p2 == "E" {
-			fmt.Println("Codigo aquí")
+
+		} else if tipo_p4 == "E" {
+			salida4 = (tamano_P4 * 100) / tamano
+			dot = dot + "<td colspan=\"6\" rowspan=\"1\">Extendida</td>"
+			resta := 100 - (salida + salida2 + salida3 + salida4)
+			espaciolibre := strconv.Itoa(resta)
+			if resta > 0 {
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+			}
+			existeExtendida4 = true
 		} else {
 			salida4 = (tamano_P4 * 100) / tamano
 			porcentaje4 := strconv.Itoa(salida4)
 			dot = dot + "<td rowspan=\"3\">Primaria <br/>" + porcentaje4 + "%" + " del disco</td>"
 			resta := 100 - (salida + salida2 + salida3 + salida4)
 			espaciolibre := strconv.Itoa(resta)
-			dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+			if resta > 0 {
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + espaciolibre + "%" + "del disco</td>\n"
+			}
+
 		}
 
-	} else {
-		inicio_particion1 := string(particion[0].Part_start[:])
-		inicio_particion1 = strings.TrimRightFunc(inicio_particion1, func(r rune) bool { return r == '\x00' })
-		size_particion1 := string(particion[0].Part_size[:])
-		size_particion1 = strings.TrimRightFunc(size_particion1, func(r rune) bool { return r == '\x00' })
-		//int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
-		int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
-		//int_size_particion1, err := strconv.Atoi(size_particion1)
-		file, err := os.OpenFile(rutaa, os.O_RDONLY, 0644)
-		if err != nil {
-			fmt.Println("¡¡ Error !! No se pudo acceder al disco")
-			respuesta = "¡¡ Error !! No se pudo acceder al disco"
-			return respuesta
-		}
-		defer file.Close()
+		if existeExtendida1 == true {
 
-		if _, err := file.Seek(int64(int_inicio_particion1), 0); err != nil {
-			fmt.Println(err)
-			return err.Error()
-		}
+			file, err := os.OpenFile(nodoActual.ruta, os.O_RDONLY, 0644)
+			if err != nil {
+				fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+				respuesta = "¡¡ Error !! No se pudo acceder al disco"
+				return respuesta
+			}
+			defer file.Close()
 
-		var PruebaEBR EBR
-		if err := binary.Read(file, binary.LittleEndian, &PruebaEBR); err != nil {
-			fmt.Println(err)
-			return err.Error()
-		}
+			if _, err := file.Seek(int64(nodoActual.inicioparticion), 0); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
 
-		// fsType := string(bytes.TrimRight(PruebaEBR.Part_fit[:], string(0)))
-		fsType1 := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
-		// fsType2 := string(bytes.TrimRight(PruebaEBR.Part_next[:], string(0)))
-		// string_tamanop := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
-		// int_tam_disco, err := strconv.Atoi(string_tamanop)
-		// fmt.Println("AJuste", fsType)
-		// fmt.Println("Nombre", fsType1)
-		// fmt.Println("Siguiente", fsType2)
-		// fmt.Println("Tam : ", string_tamanop)
+			var PruebaEBR EBR
+			if err := binary.Read(file, binary.LittleEndian, &PruebaEBR); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
 
-		if fsType1 != "" {
-			// inicio_particion1 := string(particion[0].Part_start[:])
-			// inicio_particion1 = strings.TrimRightFunc(inicio_particion1, func(r rune) bool { return r == '\x00' })
-			// //int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
-			// int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
+			fsType2 := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+			fmt.Println(fsType2)
+			siguienteE := string(bytes.TrimRight(PruebaEBR.Part_next[:], string(0)))
+			INT_P, err := strconv.Atoi(siguienteE)
 
-			// obtener_ebr := PruebaEBR
+			string_sizeP1 := string(bytes.TrimRight(particion[0].Part_size[:], string(0)))
+			tamano_P1, err := strconv.Atoi(string_sizeP1)
+			if err != nil {
+				fmt.Println("Error:", err)
+			}
+			porcentajeP1 := (tamano_P1 * 100) / tamano
+			if INT_P == -1 {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
 
-			// copy(obtener_ebr.Part_status[:], "0")
-			// copy(obtener_ebr.Part_fit[:], part_fit)
-			// copy(obtener_ebr.Part_start[:], strconv.Itoa(int_inicio_particion1))
-			// copy(obtener_ebr.Part_size[:], strconv.Itoa(tamano_archivo1))
-			// copy(obtener_ebr.Part_next[:], strconv.Itoa(-1))
-			// copy(obtener_ebr.Part_name[:], nombre_part)
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje1 := strconv.Itoa(salidaP)
 
-			// file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
-			// if err != nil {
-			// 	fmt.Println("¡¡ Error !! No se pudo acceder al disco")
-			// 	respuesta = "¡¡ Error !! No se pudo acceder al disco"
-			// 	return respuesta
-			// }
-			// defer file.Close()
+				espaciolibre := porcentajeP1 - salidaP
+				str_espaciolinre := strconv.Itoa(espaciolibre)
 
-			// if _, err := file.Seek(int64(int_inicio_particion1), 0); err != nil {
-			// 	fmt.Println(err)
-			// 	return err.Error()
-			// }
-			// if err := binary.Write(file, binary.LittleEndian, &obtener_ebr); err != nil {
-			// 	fmt.Println(err)
-			// 	return err.Error()
-			// }
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog + "<br/>" + porcentaje1 + "%" + "del disco</td>\n"
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			} else {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
 
-			fmt.Println("")
-			fmt.Println("*                Particion Logica creada                      *")
-			fmt.Println("")
-			respuesta = "*                Particion Logica creada                      *"
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje1 := strconv.Itoa(salidaP)
 
-			return respuesta
+				if _, err := file.Seek(int64(nodoActual.inicioparticion+30), 0); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
 
-		} else {
+				var SiguienteEBR EBR
+				if err := binary.Read(file, binary.LittleEndian, &SiguienteEBR); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
 
-			// var AnteriorEBR EBR
-			// var SiguienteEBR EBR
+				nombrelog2 := string(bytes.TrimRight(SiguienteEBR.Part_name[:], string(0)))
+				size_p2 := string(bytes.TrimRight(SiguienteEBR.Part_size[:], string(0)))
+				int_size_p2, err := strconv.Atoi(size_p2)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
 
-			// AnteriorEBR = PruebaEBR
-			// nombre_anterior := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
-			// size_anterior := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				salidaP2 := (int_size_p2 * 100) / tamano
+				porcentaje2 := strconv.Itoa(salidaP2)
 
-			// int_anterior, err := strconv.Atoi(size_anterior)
-			// if err != nil {
+				espaciolibre := porcentajeP1 - (salidaP + salidaP2)
+				str_espaciolinre := strconv.Itoa(espaciolibre)
 
-			// }
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log'>" + nombrelog + "<br/>" + porcentaje1 + "%" + "del disco</td>\n"
 
-			// tamanofinal := int_size_particion1 - (int_anterior + tamano_archivo1)
-			// nuevostart := int_inicio_particion1 + int_anterior + 1
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog2 + "<br/>" + porcentaje2 + "%" + "del disco</td>\n"
 
-			// copy(AnteriorEBR.Part_next[:], []byte(strconv.Itoa(nuevostart)))
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			}
 
-			// copy(SiguienteEBR.Part_status[:], "0")
-			// copy(SiguienteEBR.Part_fit[:], part_fit)
-			// copy(SiguienteEBR.Part_start[:], strconv.Itoa(nuevostart))
-			// copy(SiguienteEBR.Part_size[:], strconv.Itoa(tamano_archivo1))
-			// copy(SiguienteEBR.Part_next[:], strconv.Itoa(-1))
-			// copy(SiguienteEBR.Part_name[:], nombre_part)
+		} else if existeExtendida2 == true {
 
-			// file, err := os.OpenFile(rutaa, os.O_RDWR, 0644)
-			// if err != nil {
-			// 	fmt.Println("¡¡ Error !! No se pudo acceder al disco")
-			// 	respuesta = "¡¡ Error !! No se pudo acceder al disco"
-			// 	return respuesta
-			// }
-			// defer file.Close()
+			file, err := os.OpenFile(nodoActual.ruta, os.O_RDONLY, 0644)
+			if err != nil {
+				fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+				respuesta = "¡¡ Error !! No se pudo acceder al disco"
+				return respuesta
+			}
+			defer file.Close()
 
-			// if _, err := file.Seek(int64(int_inicio_particion1), 0); err != nil {
-			// 	fmt.Println(err)
-			// 	return err.Error()
-			// }
-			// if err := binary.Write(file, binary.LittleEndian, &AnteriorEBR); err != nil {
-			// 	fmt.Println(err)
-			// 	return err.Error()
-			// }
-			// if err := binary.Write(file, binary.LittleEndian, &SiguienteEBR); err != nil {
-			// 	fmt.Println(err)
-			// 	return err.Error()
-			// }
+			if _, err := file.Seek(int64(nodoActual.inicioparticion), 0); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
 
-			fmt.Println("")
-			fmt.Println("*                Particion Logica creada                      *")
-			fmt.Println("")
-			respuesta = "*                Particion Logica creada                      *"
+			var PruebaEBR EBR
+			if err := binary.Read(file, binary.LittleEndian, &PruebaEBR); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
 
-			return respuesta
+			fsType2 := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+			fmt.Println(fsType2)
+			siguienteE := string(bytes.TrimRight(PruebaEBR.Part_next[:], string(0)))
+			INT_P, err := strconv.Atoi(siguienteE)
+
+			string_sizeP1 := string(bytes.TrimRight(particion[1].Part_size[:], string(0)))
+			tamano_P2, err := strconv.Atoi(string_sizeP1)
+			if err != nil {
+				fmt.Println("Error:", err)
+			}
+			porcentajeP1 := (tamano_P2 * 100) / tamano
+			if INT_P == -1 {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje2 := strconv.Itoa(salidaP)
+
+				espaciolibre := porcentajeP1 - salidaP
+				str_espaciolinre := strconv.Itoa(espaciolibre)
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog + "<br/>" + porcentaje2 + "%" + "del disco</td>\n"
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			} else {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje1 := strconv.Itoa(salidaP)
+
+				if _, err := file.Seek(int64(nodoActual.inicioparticion+30), 0); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
+
+				var SiguienteEBR EBR
+				if err := binary.Read(file, binary.LittleEndian, &SiguienteEBR); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
+
+				nombrelog2 := string(bytes.TrimRight(SiguienteEBR.Part_name[:], string(0)))
+				size_p2 := string(bytes.TrimRight(SiguienteEBR.Part_size[:], string(0)))
+				int_size_p2, err := strconv.Atoi(size_p2)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP2 := (int_size_p2 * 100) / tamano
+				porcentaje2 := strconv.Itoa(salidaP2)
+
+				espaciolibre := porcentajeP1 - (salidaP + salidaP2)
+				str_espaciolinre := strconv.Itoa(espaciolibre)
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log'>" + nombrelog + "<br/>" + porcentaje1 + "%" + "del disco</td>\n"
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog2 + "<br/>" + porcentaje2 + "%" + "del disco</td>\n"
+
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			}
+
+		} else if existeExtendida3 == true {
+
+			file, err := os.OpenFile(nodoActual.ruta, os.O_RDONLY, 0644)
+			if err != nil {
+				fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+				respuesta = "¡¡ Error !! No se pudo acceder al disco"
+				return respuesta
+			}
+			defer file.Close()
+
+			if _, err := file.Seek(int64(nodoActual.inicioparticion), 0); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
+
+			var PruebaEBR EBR
+			if err := binary.Read(file, binary.LittleEndian, &PruebaEBR); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
+
+			fsType2 := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+			fmt.Println(fsType2)
+			siguienteE := string(bytes.TrimRight(PruebaEBR.Part_next[:], string(0)))
+			INT_P, err := strconv.Atoi(siguienteE)
+
+			string_sizeP1 := string(bytes.TrimRight(particion[2].Part_size[:], string(0)))
+			tamano_P1, err := strconv.Atoi(string_sizeP1)
+			if err != nil {
+				fmt.Println("Error:", err)
+			}
+			porcentajeP1 := (tamano_P1 * 100) / tamano
+			if INT_P == -1 {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje1 := strconv.Itoa(salidaP)
+
+				espaciolibre := porcentajeP1 - salidaP
+				str_espaciolinre := strconv.Itoa(espaciolibre)
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog + "<br/>" + porcentaje1 + "%" + "del disco</td>\n"
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			} else {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje1 := strconv.Itoa(salidaP)
+
+				if _, err := file.Seek(int64(nodoActual.inicioparticion+30), 0); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
+
+				var SiguienteEBR EBR
+				if err := binary.Read(file, binary.LittleEndian, &SiguienteEBR); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
+
+				nombrelog2 := string(bytes.TrimRight(SiguienteEBR.Part_name[:], string(0)))
+				size_p2 := string(bytes.TrimRight(SiguienteEBR.Part_size[:], string(0)))
+				int_size_p2, err := strconv.Atoi(size_p2)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP2 := (int_size_p2 * 100) / tamano
+				porcentaje2 := strconv.Itoa(salidaP2)
+
+				espaciolibre := porcentajeP1 - (salidaP + salidaP2)
+				str_espaciolinre := strconv.Itoa(espaciolibre)
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log'>" + nombrelog + "<br/>" + porcentaje1 + "%" + "del disco</td>\n"
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog2 + "<br/>" + porcentaje2 + "%" + "del disco</td>\n"
+
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			}
+
+		} else if existeExtendida4 == true {
+
+			file, err := os.OpenFile(nodoActual.ruta, os.O_RDONLY, 0644)
+			if err != nil {
+				fmt.Println("¡¡ Error !! No se pudo acceder al disco")
+				respuesta = "¡¡ Error !! No se pudo acceder al disco"
+				return respuesta
+			}
+			defer file.Close()
+
+			if _, err := file.Seek(int64(nodoActual.inicioparticion), 0); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
+
+			var PruebaEBR EBR
+			if err := binary.Read(file, binary.LittleEndian, &PruebaEBR); err != nil {
+				fmt.Println(err)
+				return err.Error()
+			}
+
+			fsType2 := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+			fmt.Println(fsType2)
+			siguienteE := string(bytes.TrimRight(PruebaEBR.Part_next[:], string(0)))
+			INT_P, err := strconv.Atoi(siguienteE)
+
+			string_sizeP1 := string(bytes.TrimRight(particion[3].Part_size[:], string(0)))
+			tamano_P1, err := strconv.Atoi(string_sizeP1)
+			if err != nil {
+				fmt.Println("Error:", err)
+			}
+			porcentajeP1 := (tamano_P1 * 100) / tamano
+			if INT_P == -1 {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje1 := strconv.Itoa(salidaP)
+
+				espaciolibre := porcentajeP1 - salidaP
+				str_espaciolinre := strconv.Itoa(espaciolibre)
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog + "<br/>" + porcentaje1 + "%" + "del disco</td>\n"
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			} else {
+				dot = dot + "</tr>\n"
+				dot = dot + "<tr>\n"
+				nombrelog := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
+				size_p1 := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
+				int_size_p1, err := strconv.Atoi(size_p1)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP := (int_size_p1 * 100) / tamano
+				porcentaje1 := strconv.Itoa(salidaP)
+
+				if _, err := file.Seek(int64(nodoActual.inicioparticion+30), 0); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
+
+				var SiguienteEBR EBR
+				if err := binary.Read(file, binary.LittleEndian, &SiguienteEBR); err != nil {
+					fmt.Println(err)
+					return err.Error()
+				}
+
+				nombrelog2 := string(bytes.TrimRight(SiguienteEBR.Part_name[:], string(0)))
+				size_p2 := string(bytes.TrimRight(SiguienteEBR.Part_size[:], string(0)))
+				int_size_p2, err := strconv.Atoi(size_p2)
+				if err != nil {
+					fmt.Println("Error:", err)
+				}
+
+				salidaP2 := (int_size_p2 * 100) / tamano
+				porcentaje2 := strconv.Itoa(salidaP2)
+
+				espaciolibre := porcentajeP1 - (salidaP + salidaP2)
+				str_espaciolinre := strconv.Itoa(espaciolibre)
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log'>" + nombrelog + "<br/>" + porcentaje1 + "%" + "del disco</td>\n"
+
+				dot = dot + "<td rowspan=\"2\" port='log1'>EBR</td><td rowspan=\"2\" port='log2'>" + nombrelog2 + "<br/>" + porcentaje2 + "%" + "del disco</td>\n"
+
+				dot = dot + "<td rowspan=\"2\" port='libre'>Espacio Libre <br/>" + str_espaciolinre + "%" + "del disco</td>\n"
+			}
 
 		}
 
@@ -3906,24 +4183,33 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) string {
 		fmt.Println(err)
 	}
 
-	// comando_ejecutar := "dot -Tpng ReporteDisk.dot -o " + directorio + nombreSinExt + ".png"
+	comando_ejecutar := "dot -Tpng ReporteDisk.dot -o " + directorio + nombreSinExt + ".png"
 
-	// cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
+	cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
 
-	// err = cmd.Run()
-	// if err != nil {
-	// 	fmt.Println("Error al ejecutar el comando:", err)
-	// 	return
-	// }
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("Error al ejecutar el comando:", err)
+		//return
+	}
 
 	fmt.Println("")
 	fmt.Println("*               Reporte Disk creado con exito              *")
 	fmt.Println("")
 
+	ruta_buscar := directorio + nombreSinExt + ".png"
+
+	bytes, _ := ioutil.ReadFile(ruta_buscar)
+	var base64Encoding string
+	base64Encoding += "data:image/png;base64,"
+	base64Encoding += toBase64(bytes)
+	respuesta = base64Encoding
+
 	return respuesta
 }
 
-func reporte_tree(nodoActual *NodoMount, rutaa string) {
+func reporte_tree(nodoActual *NodoMount, rutaa string) string {
+	respuesta := ""
 
 	// Se lee el contenido del primer archivo
 	sakee, err := verSB(nodoActual.ruta, nodoActual.inicioparticion)
@@ -4002,6 +4288,16 @@ func reporte_tree(nodoActual *NodoMount, rutaa string) {
 	fmt.Println("")
 	fmt.Println("*              Reporte Tree creado con exito               *")
 	fmt.Println("")
+
+	ruta_buscar := directorio + nombreSinExt + ".png"
+
+	bytes, _ := ioutil.ReadFile(ruta_buscar)
+	var base64Encoding string
+	base64Encoding += "data:image/png;base64,"
+	base64Encoding += toBase64(bytes)
+	respuesta = base64Encoding
+
+	return respuesta
 }
 
 func reporte_sb(nodoActual *NodoMount, rutaa string) string {
