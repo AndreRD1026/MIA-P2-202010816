@@ -2757,10 +2757,17 @@ func comando_login(commandArray []string) string {
 					}
 				}
 			}
-			// fmt.Println("")
-			// fmt.Println("*           Se ha iniciado sesion con el usuario: ", user_buscar, " 	*")
-			// fmt.Println("")
-			//
+
+			if encontrado == false {
+				fmt.Println("¡¡ Error !! No se puedo iniciar sesion")
+				respuesta = "¡¡ Error !! No se puedo iniciar sesion"
+			} else {
+
+				fmt.Println("")
+				fmt.Println("*           Se ha iniciado sesion con el usuario: ", user_buscar, " 	*")
+				fmt.Println("")
+				respuesta = "*           Se ha iniciado sesion  "
+			}
 
 		} else {
 			fmt.Println("No se encontró ningúna particion con ese ID")
@@ -2774,15 +2781,6 @@ func comando_login(commandArray []string) string {
 			respuesta = "¡¡ Error !! El usuario " + usuario.nombre + " esta logeado, debes cerrar sesion primero"
 		}
 		return respuesta
-	}
-
-	if encontrado == false {
-		respuesta = "¡¡ Error !! No se puedo iniciar sesion"
-	} else {
-		respuesta = "*           Se ha iniciado sesion con el usuario: " + user_buscar + " 	*"
-		fmt.Println("")
-		fmt.Println("*           Se ha iniciado sesion con el usuario: ", user_buscar, " 	*")
-		fmt.Println("")
 	}
 
 	return respuesta

@@ -10,7 +10,8 @@
             <input #fileUpload [hidden]="true" type="file" class="file-input" (change)="onFileSelected($event)">
             <button class="btn btn-primary" (click)="fileUpload.click()" style="margin-right: 5px;">Cargar Archivo </button>
                 <!-- <button class="btn btn-primary" style="margin-right: 5px;">Cargar Archivo</button> -->
-            <button class="btn btn-success" (click)="ejecutar()">Ejecutar</button>
+            <button class="btn btn-success" (click)="ejecutar()" style="margin-right: 10px;">Ejecutar</button>
+            <button class="btn btn-warning" (click)="limpiar()">Limpiar Todo</button>
             <!-- <button class="btn btn-success">Ejecutar</button> -->
         </div>
         <div class="form-group">
@@ -20,7 +21,7 @@
         </div>
         <div class="form-group" style="margin-top: 3%;">
             <label for="salidatxtarea">Salida</label>
-            <textarea class="form-control" id="salidatxtarea" rows="10" [(ngModel)]="salida" name="salida"></textarea>
+            <textarea class="form-control" id="salidatxtarea" rows="15" [(ngModel)]="salida" name="salida"></textarea>
             <!-- <textarea class="form-control" id="salidatxtarea" rows="10"  name="salida"></textarea> -->
         </div>
     </form>

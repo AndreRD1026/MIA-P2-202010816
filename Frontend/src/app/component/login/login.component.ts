@@ -49,7 +49,8 @@ export class LoginComponent {
             imageHeight: 200,
             imageAlt: 'Custom image',
           })
-          this.router.navigate(['/usuario'])
+          //this.router.navigate(['/usuario'])
+          this.router.navigate(['/usuario'], { queryParams: { idparticion: this.idparticion, user: this.user } });
           break
         case "NO":
           //console.log("Entra en el segundo");
