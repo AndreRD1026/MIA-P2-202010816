@@ -118,6 +118,9 @@ type NodoMount struct {
 	tamanioparticion int
 	horamontado      string
 	numerodisco      int
+	rutareportedisk  string
+	rutareporteSB    string
+	rutareporeTree   string
 	nextmount        *NodoMount
 	prevmount        *NodoMount
 }
@@ -132,6 +135,8 @@ type NodoLogin struct {
 var miLista *ListaDobleEnlazada = &ListaDobleEnlazada{}
 var usuarioLogeado []NodoLogin
 
+// Esto nos ayuda a mandar las peticiones desde el frontend
+
 type cmdstruct struct {
 	Cmd string `json:"cmd"`
 }
@@ -140,6 +145,11 @@ type LoginRequest struct {
 	Id   string `json:"id"`
 	User string `json:"user"`
 	Pass string `json:"pass"`
+}
+
+type Reportes struct {
+	Idpart string `json:"id"`
+	Ruta   string `json:"ruta"`
 }
 
 func main() {
@@ -175,6 +185,39 @@ func main() {
 		respuesta = comando_logout()
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"result": "` + respuesta + `" }`))
+	})
+
+	mux.HandleFunc("/repDisk", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var Prrueba Reportes
+		respuesta := ""
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &Prrueba)
+		respuesta = reporte_disk_front(Prrueba.Idpart, Prrueba.Ruta)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result_disk": "` + respuesta + `" }`))
+	})
+
+	mux.HandleFunc("/repSB", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var Prrueba Reportes
+		respuesta := ""
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &Prrueba)
+		respuesta = reporte_sb_front(Prrueba.Idpart, Prrueba.Ruta)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result_sb": "` + respuesta + `" }`))
+	})
+
+	mux.HandleFunc("/repTree", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var Prrueba Reportes
+		respuesta := ""
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &Prrueba)
+		respuesta = reporte_tree_front(Prrueba.Idpart, Prrueba.Ruta)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result_tree": "` + respuesta + `" }`))
 	})
 
 	fmt.Println("Server ON in port 5000")
@@ -1808,7 +1851,11 @@ func comando_mount(commandArray []string) string {
 
 		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+		reported := ""
+		reportes := ""
+		reportet := ""
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
 
 		copy(discop.Mbr_partition_1.Part_status[:], "1")
 
@@ -1868,7 +1915,11 @@ func comando_mount(commandArray []string) string {
 
 		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+		reported := ""
+		reportes := ""
+		reportet := ""
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
 
 		copy(discop.Mbr_partition_2.Part_status[:], "1")
 
@@ -1928,7 +1979,11 @@ func comando_mount(commandArray []string) string {
 
 		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+		reported := ""
+		reportes := ""
+		reportet := ""
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
 
 		copy(discop.Mbr_partition_3.Part_status[:], "1")
 
@@ -1988,7 +2043,11 @@ func comando_mount(commandArray []string) string {
 
 		nuevonombre := ultimosdigitos + string_Numero + letraAsignar
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar)
+		reported := ""
+		reportes := ""
+		reportet := ""
+
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
 
 		copy(discop.Mbr_partition_4.Part_status[:], "1")
 
@@ -4151,6 +4210,8 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) string {
 		fmt.Println(err)
 	}
 
+	nodoActual.rutareportedisk = rutaa
+
 	comando_ejecutar := "dot -Tpng ReporteDisk.dot -o " + directorio + nombreSinExt + ".png"
 
 	cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
@@ -4165,19 +4226,49 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) string {
 	fmt.Println("*               Reporte Disk creado con exito              *")
 	fmt.Println("")
 
-	ruta_buscar := directorio + nombreSinExt + ".png"
-
-	bytes, _ := ioutil.ReadFile(ruta_buscar)
-	var base64Encoding string
-	base64Encoding += "data:image/png;base64,"
-	base64Encoding += toBase64(bytes)
-	respuesta = base64Encoding
+	respuesta = "*               Reporte Disk creado con exito              *"
 
 	return respuesta
 }
 
-func reporte_disk_front(rutaa string) string {
+func reporte_disk_front(idpart string, rutaa string) string {
 	respuesta := ""
+
+	if len(usuarioLogeado) != 0 {
+		existe, nodo := miLista.buscarPorID(idpart)
+		if existe {
+
+			if nodo.rutareportedisk != "" {
+				nombre := filepath.Base(nodo.rutareportedisk)                    // obtiene el nombre del archivo con la extensión
+				nombreSinExt := strings.TrimSuffix(nombre, filepath.Ext(nombre)) // remueve la extensión
+
+				// Creacion, escritura y cierre de archivo
+				directorio := nodo.rutareportedisk[:strings.LastIndex(nodo.rutareportedisk, "/")+1]
+
+				ruta_buscar := directorio + nombreSinExt + ".png"
+
+				bytes, _ := ioutil.ReadFile(ruta_buscar)
+				var base64Encoding string
+				base64Encoding += "data:image/png;base64,"
+				base64Encoding += toBase64(bytes)
+				respuesta = base64Encoding
+			} else {
+				respuesta = "NOE"
+				return respuesta
+			}
+
+		} else {
+			fmt.Println("No se encontró ningúna particion con ese ID")
+			//respuesta = "No se encontró ningúna particion con ese ID"
+			respuesta = "NO"
+			return respuesta
+		}
+
+	} else {
+		fmt.Println("¡¡ Error !! No hay ninguna particion montada")
+		respuesta = "¡¡ Error !! No hay ninguna particion montada"
+		return respuesta
+	}
 
 	return respuesta
 
@@ -4250,6 +4341,8 @@ func reporte_tree(nodoActual *NodoMount, rutaa string) string {
 		//return err.Error()
 	}
 
+	nodoActual.rutareporeTree = rutaa
+
 	comando_ejecutar := "dot -Tpng ReporteTree.dot -o " + directorio + nombreSinExt + ".png"
 
 	cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
@@ -4264,15 +4357,52 @@ func reporte_tree(nodoActual *NodoMount, rutaa string) string {
 	fmt.Println("*              Reporte Tree creado con exito               *")
 	fmt.Println("")
 
-	ruta_buscar := directorio + nombreSinExt + ".png"
-
-	bytes, _ := ioutil.ReadFile(ruta_buscar)
-	var base64Encoding string
-	base64Encoding += "data:image/png;base64,"
-	base64Encoding += toBase64(bytes)
-	respuesta = base64Encoding
+	respuesta = "*              Reporte Tree creado con exito               *"
 
 	return respuesta
+}
+
+func reporte_tree_front(idpart string, rutaa string) string {
+	respuesta := ""
+
+	if len(usuarioLogeado) != 0 {
+		existe, nodo := miLista.buscarPorID(idpart)
+		if existe {
+
+			if nodo.rutareporeTree != "" {
+				nombre := filepath.Base(nodo.rutareporeTree)                     // obtiene el nombre del archivo con la extensión
+				nombreSinExt := strings.TrimSuffix(nombre, filepath.Ext(nombre)) // remueve la extensión
+
+				// Creacion, escritura y cierre de archivo
+				directorio := nodo.rutareporeTree[:strings.LastIndex(nodo.rutareporeTree, "/")+1]
+
+				ruta_buscar := directorio + nombreSinExt + ".png"
+
+				bytes, _ := ioutil.ReadFile(ruta_buscar)
+				var base64Encoding string
+				base64Encoding += "data:image/png;base64,"
+				base64Encoding += toBase64(bytes)
+				respuesta = base64Encoding
+			} else {
+				respuesta = "NOE"
+				return respuesta
+			}
+
+		} else {
+			fmt.Println("No se encontró ningúna particion con ese ID")
+			//respuesta = "No se encontró ningúna particion con ese ID"
+			respuesta = "NO"
+			return respuesta
+		}
+
+	} else {
+		fmt.Println("¡¡ Error !! No hay ninguna particion montada")
+		respuesta = "¡¡ Error !! No hay ninguna particion montada"
+		return respuesta
+	}
+
+	return respuesta
+
 }
 
 func reporte_sb(nodoActual *NodoMount, rutaa string) string {
@@ -4377,6 +4507,8 @@ func reporte_sb(nodoActual *NodoMount, rutaa string) string {
 		return err.Error()
 	}
 
+	nodoActual.rutareporteSB = rutaa
+
 	comando_ejecutar := "dot -Tpng ReporteSB.dot -o " + directorio + nombreSinExt + ".png"
 
 	cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
@@ -4391,15 +4523,52 @@ func reporte_sb(nodoActual *NodoMount, rutaa string) string {
 	fmt.Println("*          Reporte SuperBloque creado con exito            *")
 	fmt.Println("")
 
-	ruta_buscar := directorio + nombreSinExt + ".png"
-
-	bytes, _ := ioutil.ReadFile(ruta_buscar)
-	var base64Encoding string
-	base64Encoding += "data:image/png;base64,"
-	base64Encoding += toBase64(bytes)
-	respuesta = base64Encoding
+	respuesta = "*          Reporte SuperBloque creado con exito            *"
 
 	return respuesta
+}
+
+func reporte_sb_front(idpart string, rutaa string) string {
+	respuesta := ""
+
+	if len(usuarioLogeado) != 0 {
+		existe, nodo := miLista.buscarPorID(idpart)
+		if existe {
+
+			if nodo.rutareporteSB != "" {
+				nombre := filepath.Base(nodo.rutareporteSB)                      // obtiene el nombre del archivo con la extensión
+				nombreSinExt := strings.TrimSuffix(nombre, filepath.Ext(nombre)) // remueve la extensión
+
+				// Creacion, escritura y cierre de archivo
+				directorio := nodo.rutareporteSB[:strings.LastIndex(nodo.rutareporteSB, "/")+1]
+
+				ruta_buscar := directorio + nombreSinExt + ".png"
+
+				bytes, _ := ioutil.ReadFile(ruta_buscar)
+				var base64Encoding string
+				base64Encoding += "data:image/png;base64,"
+				base64Encoding += toBase64(bytes)
+				respuesta = base64Encoding
+			} else {
+				respuesta = "NOE"
+				return respuesta
+			}
+
+		} else {
+			fmt.Println("No se encontró ningúna particion con ese ID")
+			//respuesta = "No se encontró ningúna particion con ese ID"
+			respuesta = "NO"
+			return respuesta
+		}
+
+	} else {
+		fmt.Println("¡¡ Error !! No hay ninguna particion montada")
+		respuesta = "¡¡ Error !! No hay ninguna particion montada"
+		return respuesta
+	}
+
+	return respuesta
+
 }
 
 func comando_execute(commandArray []string) {
@@ -4520,7 +4689,7 @@ type ListaDobleEnlazada struct {
 	last  *NodoMount
 }
 
-func (lista *ListaDobleEnlazada) MontarP(id string, ruta string, nombreparticion string, tipoparticion string, inicioparticion int, tamanioparticion int, horamontado string, numerodisco int) (*NodoMount, error) {
+func (lista *ListaDobleEnlazada) MontarP(id string, ruta string, nombreparticion string, tipoparticion string, inicioparticion int, tamanioparticion int, horamontado string, numerodisco int, rutareportedisk string, rutareporteSB string, rutareporteTree string) (*NodoMount, error) {
 
 	nuevoNodo := &NodoMount{
 		id:               id,
@@ -4531,6 +4700,9 @@ func (lista *ListaDobleEnlazada) MontarP(id string, ruta string, nombreparticion
 		tamanioparticion: tamanioparticion,
 		horamontado:      horamontado,
 		numerodisco:      numerodisco,
+		rutareportedisk:  rutareportedisk,
+		rutareporteSB:    rutareporteSB,
+		rutareporeTree:   rutareporteTree,
 		nextmount:        nil,
 		prevmount:        nil,
 	}

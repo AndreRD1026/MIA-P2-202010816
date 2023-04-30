@@ -6,6 +6,7 @@ import { AppComponent } from './app.component';
 import { InicioComponent } from './component/inicio/inicio.component';
 import { LoginComponent } from './component/login/login.component';
 import { UsuarioComponent } from './component/usuario/usuario.component';
+import { ReportesComponent } from './component/reportes/reportes.component';
 
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
@@ -15,12 +16,14 @@ import { SweetAlert2Module } from '@sweetalert2/ngx-sweetalert2';
 
 
 
+
 @NgModule({
   declarations: [
     AppComponent,
     InicioComponent,
     LoginComponent,
-    UsuarioComponent
+    UsuarioComponent,
+    ReportesComponent
   ],
   imports: [
     BrowserModule,

@@ -1,0 +1,15 @@
+.header{
+    max-width: 100%;
+    height: 100px;
+    background-color:lightslategrey;
+    text-align: center;
+}
+
+.titulo{
+    color:darkviolet;
+}
+
+.body-app{
+    height: 900px;
+    background-color:lightslategrey;
+}

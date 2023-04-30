@@ -10,10 +10,10 @@
 
 <div class="body-app">
     <div class="container-fluid" style="margin-top: 0%; width: 60%;">
-        <div class="mb-3">
+        <!-- <div class="mb-3">
             <h3 class="form-label">Ingresar Ruta</h3>
             <input type="text" class="form-control" id="inputid" [(ngModel)]="rutaa" name="rutaa">
-        </div>
+        </div> -->
     </div>
     <div>
         <h2 class="container-fluid" style="margin-top: 0%; width: 60%;">Fase 1</h2>
@@ -28,17 +28,17 @@
     </div>
     <div class="container-fluid" style="margin-top: 0%; width: 60%;">
         <div class="mb-3">
-            <button type="button" class="btn btn-success" (click)="obtenerRuta()">Reporte SuperBloque</button>
+            <button type="button" class="btn btn-success" (click)="generarSB()">Reporte SuperBloque</button>
         </div>
     </div>
     <div class="container-fluid" style="margin-top: 0%; width: 60%;">
         <div class="mb-3">
-            <button type="button" class="btn btn-info" (click)="obtenerRuta()">Reporte Tree</button>
+            <button type="button" class="btn btn-info" (click)="generarTree()">Reporte Tree</button>
         </div>
     </div>
     <div class="container-fluid" style="margin-top: 0%; width: 60%;">
         <div class="mb-3">
-            <button type="button" class="btn btn-warning" (click)="obtenerRuta()">Reporte File</button>
+            <button type="button" class="btn btn-warning" (click)="generarFile()">Reporte File</button>
         </div>
     </div>
     
