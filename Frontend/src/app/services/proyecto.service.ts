@@ -16,7 +16,7 @@ export class ProyectoService {
   //18.212.40.106
 
   postEntrada(entrada: string) {
-    return this.httpClient.post("http://44.201.152.11:5000/analizar", { Cmd: entrada });
+    return this.httpClient.post("http://3.93.239.235:5000/analizar", { Cmd: entrada });
   }
 
   // postEntrada(entrada: string) {
@@ -29,7 +29,7 @@ export class ProyectoService {
       user: user,
       pass: pass
     };
-    return this.httpClient.post("http://44.201.152.11:5000/login", body);
+    return this.httpClient.post("http://3.93.239.235:5000/login", body);
   }
 
   // postLogin(id: string, user: string, pass: string) {
@@ -43,7 +43,7 @@ export class ProyectoService {
 
   postLogout(){
     let id = ""
-    return this.httpClient.post("http://44.201.152.11:5000/logout", id);
+    return this.httpClient.post("http://3.93.239.235:5000/logout", id);
   }
 
   // postLogout(){

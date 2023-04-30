@@ -3,23 +3,43 @@
         <a class="btn btn-sm btn-outline-warning" type="button" (click)="cerrarSesion()">Cerrar Sesion</a>
     </form>
 </nav>
+<div class="header">
+    <h1 class="titulo">MENU REPORTES</h1>
+    <h2 class="titulo">Usuario Actual: {{ user }}</h2>
+</div>
 
 <div class="body-app">
-    <div class="container-fluid" style="margin-top: 0%; width: 80%;">
-        <!-- <div class="mb-3">
-            <label for="inputid" class="form-label">ID Particion</label>
-            <input type="text" class="form-control" id="inputid" [(ngModel)]="idparticion" name="idparticion">
-        </div>
+    <div class="container-fluid" style="margin-top: 0%; width: 60%;">
         <div class="mb-3">
-            <label for="inputuser" class="form-label">User</label>
-            <input type="text" class="form-control" id="inputuser" [(ngModel)]="user" name="user">
-        </div>
-        <div class="mb-3">
-            <label for="inputpwd" class="form-label">Password</label>
-            <input type="password" class="form-control" id="inputpwd" [(ngModel)]="pwd" name="pwd">
-        </div> -->
-        <div class="mb-3">
-            <button type="submit" class="btn btn-primary" (click)="prueba()">Login</button>
+            <h3 class="form-label">Ingresar Ruta</h3>
+            <input type="text" class="form-control" id="inputid" [(ngModel)]="rutaa" name="rutaa">
         </div>
     </div>
+    <div>
+        <h2 class="container-fluid" style="margin-top: 0%; width: 60%;">Fase 1</h2>
     </div>
+    <div class="container-fluid" style="margin-top: 0%; width: 60%;">
+        <div class="mb-3">
+            <button type="button" class="btn btn-danger" (click)="generarDisk()">Reporte DISK</button>
+        </div>
+    </div>
+    <div>
+        <h2 class="container-fluid" style="margin-top: 0%; width: 60%;">Fase 2</h2>
+    </div>
+    <div class="container-fluid" style="margin-top: 0%; width: 60%;">
+        <div class="mb-3">
+            <button type="button" class="btn btn-success" (click)="obtenerRuta()">Reporte SuperBloque</button>
+        </div>
+    </div>
+    <div class="container-fluid" style="margin-top: 0%; width: 60%;">
+        <div class="mb-3">
+            <button type="button" class="btn btn-info" (click)="obtenerRuta()">Reporte Tree</button>
+        </div>
+    </div>
+    <div class="container-fluid" style="margin-top: 0%; width: 60%;">
+        <div class="mb-3">
+            <button type="button" class="btn btn-warning" (click)="obtenerRuta()">Reporte File</button>
+        </div>
+    </div>
+    
+</div>

@@ -229,31 +229,6 @@ func split_comando(comando string) string {
 	return ejecucion_comando(commandArray)
 }
 
-// func split_comando(comando string) string {
-// 	var commandArray []string
-// 	// Eliminacion de saltos de linea
-// 	comando = strings.Replace(comando, "\n", "", 1)
-// 	comando = strings.Replace(comando, "\r", "", 1)
-
-// 	// Guardado de parametros
-
-// 	if strings.Contains(comando, "mostrar") {
-// 		// indiceComentario := strings.Index(comando, "#")
-
-// 		// // si hay un comentario, obtenerlo
-// 		// if indiceComentario >= 0 {
-// 		// 	comentario := comando[indiceComentario+1:]
-// 		// 	// imprimir el comentario
-// 		// 	fmt.Println("Comentario encontrado ->", comentario)
-// 		// }
-// 		commandArray = append(commandArray, comando)
-// 	} else {
-// 		commandArray = strings.Split(comando, " ")
-// 	}
-// 	// Ejecicion de comando leido
-// 	return ejecucion_comando(commandArray)
-// }
-
 func ejecucion_comando(commandArray []string) string {
 	respuesta := ""
 	// Identificacion de comando y ejecucion
@@ -4199,6 +4174,13 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) string {
 	respuesta = base64Encoding
 
 	return respuesta
+}
+
+func reporte_disk_front(rutaa string) string {
+	respuesta := ""
+
+	return respuesta
+
 }
 
 func reporte_tree(nodoActual *NodoMount, rutaa string) string {
