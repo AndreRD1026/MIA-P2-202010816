@@ -25,6 +25,15 @@ export class InicioComponent {
   }
 
   ejecutar() {
+    if (!this.entrada) {
+      // Si this.entrada está vacío, no hacer nada
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Parece que no hay nada para ejecutar!'
+      })
+      return;
+    }
     let split_entrada = this.entrada.split("\n");
   
     (async () => {

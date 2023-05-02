@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -30,13 +31,13 @@ type Partition = struct {
 	Part_status [1]byte  // Indica si la partición está activa o no
 	Part_type   [1]byte  // Valores P o E
 	Part_fit    [1]byte  // Indica el Ajuste [B]est, [F]irst o [W]orst
-	Part_start  [6]byte  // Indica en qué byte del disco inicia la partición
-	Part_size   [6]byte  // Contiene el tamaño total de la partición en bytes
+	Part_start  [8]byte  // Indica en qué byte del disco inicia la partición
+	Part_size   [8]byte  // Contiene el tamaño total de la partición en bytes
 	Part_name   [16]byte // Nombre de la partición
 }
 
 type MBR = struct {
-	Mbr_tamano         [4]byte   // Tamanio del disco
+	Mbr_tamano         [10]byte  // Tamanio del disco
 	Mbr_fecha_creacion [19]byte  // Fecha y hora de creacion del disco
 	Mbr_dsk_signature  [4]byte   // Numero random, identifica de forma unica a cada disco
 	Dsk_fit            [1]byte   // Ajuste de la particion [B]est, [F]irt o [W]orst
@@ -49,9 +50,9 @@ type MBR = struct {
 type EBR = struct {
 	Part_status [1]byte  // Indica si esta activa o no
 	Part_fit    [1]byte  // Indica el Ajuste [B]est, [F]irst o [W]orst
-	Part_start  [4]byte  // Indica el byte donde inicia la particion
-	Part_size   [4]byte  // Tamanio total de la particion
-	Part_next   [4]byte  // Byte en el que está el próximo EBR. -1 si no hay siguiente
+	Part_start  [8]byte  // Indica el byte donde inicia la particion
+	Part_size   [8]byte  // Tamanio total de la particion
+	Part_next   [8]byte  // Byte en el que está el próximo EBR. -1 si no hay siguiente
 	Part_name   [16]byte // Nombre de la particion
 }
 
@@ -262,6 +263,12 @@ func split_comando(comando string) string {
 	comando = strings.Replace(comando, "\n", "", 1)
 	comando = strings.Replace(comando, "\r", "", 1)
 
+	// Convertir todo lo que está entre ">" y "=" a minúsculas
+	re := regexp.MustCompile(`>([^=]*)=`)
+	comando = re.ReplaceAllStringFunc(comando, func(match string) string {
+		return strings.ToLower(match)
+	})
+
 	// Guardado de parametros
 	if strings.Contains(comando, "mostrar") {
 		commandArray = append(commandArray, comando)
@@ -339,12 +346,7 @@ func comando_mkdisk(commandArray []string) string {
 	bloque := make([]byte, 1024)
 	// Lectura de parametros del comando
 	for i := 0; i < len(commandArray); i++ {
-		//data := strings.ToLower(commandArray[i])
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 		if strings.Contains(data, ">size=") {
 			strtam := strings.Replace(data, ">size=", "", 1)
 			strtam = strings.Replace(strtam, "\"", "", 2)
@@ -365,8 +367,8 @@ func comando_mkdisk(commandArray []string) string {
 			ajuste = straux
 		} else if strings.Contains(data, ">path=") {
 			ruta = strings.Replace(data, ">path=", "", 1)
-			//ruta = data
-			//fmt.Println("Ahora? ", ruta)
+			ruta = strings.Replace(ruta, "\"", "", 2)
+			ruta = strings.Replace(ruta, "\r", "", 1)
 		}
 	}
 
@@ -527,14 +529,11 @@ func comando_rmdisk(commandArray []string) string {
 	respuesta := ""
 	ruta := ""
 	for i := 0; i < len(commandArray); i++ {
-		//data := strings.ToLower(commandArray[i])
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 		if strings.Contains(data, ">path=") {
 			ruta = strings.Replace(data, ">path=", "", 1)
+			ruta = strings.Replace(ruta, "\"", "", 2)
+			ruta = strings.Replace(ruta, "\r", "", 1)
 		}
 	}
 
@@ -607,10 +606,6 @@ func comando_fkdisk(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">size=") {
 			strtam := strings.Replace(data, ">size=", "", 1)
@@ -628,6 +623,8 @@ func comando_fkdisk(commandArray []string) string {
 			unidad = straux
 		} else if strings.Contains(data, ">path=") {
 			rutaa = strings.Replace(data, ">path=", "", 1)
+			rutaa = strings.Replace(rutaa, "\"", "", 2)
+			rutaa = strings.Replace(rutaa, "\r", "", 1)
 			//ruta = data
 			//fmt.Println("Ahora? ", ruta)
 		} else if strings.Contains(data, ">type=") {
@@ -1118,15 +1115,7 @@ func comando_fkdisk(commandArray []string) string {
 					return err.Error()
 				}
 
-				// fsType := string(bytes.TrimRight(PruebaEBR.Part_fit[:], string(0)))
 				fsType1 := string(bytes.TrimRight(PruebaEBR.Part_name[:], string(0)))
-				// fsType2 := string(bytes.TrimRight(PruebaEBR.Part_next[:], string(0)))
-				// string_tamanop := string(bytes.TrimRight(PruebaEBR.Part_size[:], string(0)))
-				// int_tam_disco, err := strconv.Atoi(string_tamanop)
-				// fmt.Println("AJuste", fsType)
-				// fmt.Println("Nombre", fsType1)
-				// fmt.Println("Siguiente", fsType2)
-				// fmt.Println("Tam : ", string_tamanop)
 
 				if fsType1 == "" {
 
@@ -1431,7 +1420,6 @@ func comando_fkdisk(commandArray []string) string {
 
 						inicio_particion3 := string(particion[2].Part_start[:])
 						inicio_particion3 = strings.TrimRightFunc(inicio_particion3, func(r rune) bool { return r == '\x00' })
-						//int_inicio_particion1, err := strconv.Atoi(inicio_particion1)
 						int_inicio_particion3, err := strconv.Atoi(inicio_particion3)
 
 						obtener_ebr := PruebaEBR
@@ -1702,13 +1690,11 @@ func comando_mount(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">path=") {
 			rutaa = strings.Replace(data, ">path=", "", 1)
+			rutaa = strings.Replace(rutaa, "\"", "", 2)
+			rutaa = strings.Replace(rutaa, "\r", "", 1)
 		} else if strings.Contains(data, ">name=") {
 			nombre_part = strings.Replace(data, ">name=", "", 1)
 		}
@@ -1891,8 +1877,6 @@ func comando_mount(commandArray []string) string {
 			respuesta = "¡¡ Error !! La particion ya se encuentra montada"
 			return respuesta
 		}
-		//fmt.Println("La particion a montar es la 2")
-
 		fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
 
 		fecha_mount := string(fecha_creacion)
@@ -1955,7 +1939,6 @@ func comando_mount(commandArray []string) string {
 			respuesta = "¡¡ Error !! La particion ya se encuentra montada"
 			return respuesta
 		}
-		//fmt.Println("La particion a montar es la 3")
 
 		fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
 
@@ -2019,7 +2002,6 @@ func comando_mount(commandArray []string) string {
 			respuesta = "¡¡ Error !! La particion ya se encuentra montada"
 			return respuesta
 		}
-		//fmt.Println("La particion a montar es la 4")
 
 		fecha_creacion := time.Now().Format("2006-01-02 15:04:05")
 
@@ -2092,10 +2074,6 @@ func comando_mkfs(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">id=") {
 			straux = strings.Replace(data, ">id=", "", 1)
@@ -2128,7 +2106,6 @@ func comando_mkfs(commandArray []string) string {
 	if tipo_formateo == "full" {
 		existe, nodo := miLista.buscarPorID(id_buscar)
 		if existe {
-			//Empieza lo chido del EXT2 DX
 
 			partb := nodo.tamanioparticion * 1024 // tamaño del bloque en bytes
 			sb := SuperBloque{}                   // instancia de SuperBloque
@@ -2694,14 +2671,6 @@ func verArchivo(path string, inicioP int) {
 		fmt.Println(err)
 		return
 	}
-
-	// fsType := string(bytes.TrimRight(SB.S_filesystem_type[:], string(0)))
-	// fsType1 := string(bytes.TrimRight(SB.S_mtime[:], string(0)))
-	// fsType2 := string(bytes.TrimRight(SB.S_magic[:], string(0)))
-	// fmt.Println("File ", fsType)
-	// fmt.Println("Time", fsType1)
-	// fmt.Println("Magic", fsType2)
-
 }
 
 func comando_login(commandArray []string) string {
@@ -2714,10 +2683,6 @@ func comando_login(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">id=") {
 			straux = strings.Replace(data, ">id=", "", 1)
@@ -2920,10 +2885,6 @@ func comando_mkgrp(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">name=") {
 			straux = strings.Replace(data, ">name=", "", 1)
@@ -3086,10 +3047,6 @@ func comando_rmgrp(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">name=") {
 			straux = strings.Replace(data, ">name=", "", 1)
@@ -3199,10 +3156,6 @@ func comando_mkusr(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">user=") {
 			straux = strings.Replace(data, ">user=", "", 1)
@@ -3296,8 +3249,6 @@ func comando_mkusr(commandArray []string) string {
 				for _, line := range lines {
 					if strings.Contains(line, name_grupo) {
 						fields := strings.Split(line, ",")
-						// //fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s, Contra: %s\n", fields[0], fields[1], fields[2], fields[3])
-						// //fmt.Printf("Numero: %s, Tipo: %s, Usuario: %s\n", fields[0], fields[1], fields[2])
 						if fields[1] == "G" {
 							encontrado = true
 						}
@@ -3442,10 +3393,6 @@ func comando_rmusr(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">user=") {
 			straux = strings.Replace(data, ">user=", "", 1)
@@ -3554,10 +3501,6 @@ func comando_rep(commandArray []string) string {
 
 	for i := 0; i < len(commandArray); i++ {
 		data := commandArray[i]
-		// if strings.HasPrefix(data, ">") {
-		// 	// Convertir a minúsculas
-		// 	data = strings.ToLower(data)
-		// }
 
 		if strings.Contains(data, ">name=") {
 			straux = strings.Replace(data, ">name=", "", 1)
@@ -3565,6 +3508,8 @@ func comando_rep(commandArray []string) string {
 
 		} else if strings.Contains(data, ">path=") {
 			straux = strings.Replace(data, ">path=", "", 1)
+			straux = strings.Replace(straux, "\"", "", 2)
+			straux = strings.Replace(straux, "\r", "", 1)
 			rutaa = straux
 
 		} else if strings.Contains(data, ">id=") {
