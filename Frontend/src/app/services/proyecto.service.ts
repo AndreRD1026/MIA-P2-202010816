@@ -100,4 +100,20 @@ export class ProyectoService {
   //   return this.httpClient.post("http://192.168.1.15:5000/repTree", body);
   // }
 
+  postRepFile(id: string, ruta: string){
+    const body = {
+      id: id,
+      ruta : ruta
+    };
+    return this.httpClient.post("http://44.211.150.86:5000/repFile", body);
+  }
+
+  // postRepFile(id: string, ruta: string){
+  //   const body = {
+  //     id: id,
+  //     ruta : ruta
+  //   };
+  //   return this.httpClient.post("http://192.168.1.15:5000/repFile", body);
+  // }
+
 }

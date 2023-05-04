@@ -81,10 +81,17 @@ export class UsuarioComponent {
   }
 
   generarFile(){
-    Swal.fire(
-      'Lo siento',
-      'Este reporte no está disponible :( ',
-    )
+    Swal.fire({
+      icon: 'success',
+      title: 'Abriendo Reporte',
+      showConfirmButton: false,
+      timer: 1500
+    })
+    this.service.postRepFile(this.idparticion, this.rutaa).subscribe(async (res: any) => {
+      this.pasarrepuesta = res.result_file
+      console.log(this.pasarrepuesta);
+      this.router.navigate(['/reportes'], { queryParams: { pasarrepuesta: this.pasarrepuesta } });
+    });
   }
 
 }

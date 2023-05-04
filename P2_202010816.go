@@ -97,7 +97,7 @@ type BloqueCarpetas = struct {
 }
 
 type BloqueArchivos = struct {
-	B_content [64]byte // Array con el contenido del archivo
+	B_content [100]byte // Array con el contenido del archivo
 }
 
 type BitMapInodo = struct {
@@ -122,6 +122,7 @@ type NodoMount struct {
 	rutareportedisk  string
 	rutareporteSB    string
 	rutareporeTree   string
+	rutareporeFile   string
 	nextmount        *NodoMount
 	prevmount        *NodoMount
 }
@@ -219,6 +220,17 @@ func main() {
 		respuesta = reporte_tree_front(Prrueba.Idpart, Prrueba.Ruta)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"result_tree": "` + respuesta + `" }`))
+	})
+
+	mux.HandleFunc("/repFile", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var Prrueba Reportes
+		respuesta := ""
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &Prrueba)
+		respuesta = reporte_file_front(Prrueba.Idpart, Prrueba.Ruta)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result_file": "` + respuesta + `" }`))
 	})
 
 	fmt.Println("Server ON in port 5000")
@@ -1840,8 +1852,9 @@ func comando_mount(commandArray []string) string {
 		reported := ""
 		reportes := ""
 		reportet := ""
+		reportef := ""
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet, reportef)
 
 		copy(discop.Mbr_partition_1.Part_status[:], "1")
 
@@ -1902,8 +1915,9 @@ func comando_mount(commandArray []string) string {
 		reported := ""
 		reportes := ""
 		reportet := ""
+		reportef := ""
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet, reportef)
 
 		copy(discop.Mbr_partition_2.Part_status[:], "1")
 
@@ -1965,8 +1979,9 @@ func comando_mount(commandArray []string) string {
 		reported := ""
 		reportes := ""
 		reportet := ""
+		reportef := ""
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet, reportef)
 
 		copy(discop.Mbr_partition_3.Part_status[:], "1")
 
@@ -2028,8 +2043,9 @@ func comando_mount(commandArray []string) string {
 		reported := ""
 		reportes := ""
 		reportet := ""
+		reportef := ""
 
-		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet)
+		miLista.MontarP(nuevonombre, rutaa, nombre_part, type_part1, int_start_part1, int_size_part1, fecha_mount, numeroAsignar, reported, reportes, reportet, reportef)
 
 		copy(discop.Mbr_partition_4.Part_status[:], "1")
 
@@ -3096,13 +3112,13 @@ func comando_rmgrp(commandArray []string) string {
 								respuesta = "¡¡ Error !! No existe ese nombre de grupo"
 								return respuesta
 							}
-							numero, err := strconv.Atoi(campos[0])
+							//numero, err := strconv.Atoi(campos[0])
 							if err != nil {
 								fmt.Println("Error convirtiendo número:", err)
 								return err.Error()
 							}
 
-							fmt.Println("Que sale? ", numero)
+							//fmt.Println("Que sale? ", numero)
 
 							// Actualizar el número a 0
 							campos[0] = "0"
@@ -3195,7 +3211,7 @@ func comando_mkusr(commandArray []string) string {
 
 	for _, usuario := range usuarioLogeado {
 		if usuario.nombre == "root" {
-			fmt.Println("Si puede crear un usuario")
+			//fmt.Println("Si puede crear un usuario")
 
 			existe, nodo := miLista.buscarPorID(usuario.id)
 			if existe {
@@ -3549,7 +3565,7 @@ func comando_rep(commandArray []string) string {
 	}
 
 	if name_rep == "disk" || name_rep == "DISK" {
-		fmt.Println("Entra al reporte disk")
+		//fmt.Println("Entra al reporte disk")
 		existe, nodo := miLista.buscarPorID(id_buscar)
 		if existe {
 			respuesta = reporte_disk(nodo, rutaa)
@@ -3560,7 +3576,7 @@ func comando_rep(commandArray []string) string {
 			return respuesta
 		}
 	} else if name_rep == "tree" || name_rep == "TREE" {
-		fmt.Println("Entra al reporte tree")
+		//fmt.Println("Entra al reporte tree")
 		existe, nodo := miLista.buscarPorID(id_buscar)
 		if existe {
 			respuesta = reporte_tree(nodo, rutaa)
@@ -3571,7 +3587,16 @@ func comando_rep(commandArray []string) string {
 			return respuesta
 		}
 	} else if name_rep == "file" || name_rep == "FILE" {
-		fmt.Println("Entra al reporte file")
+		//fmt.Println("Entra al reporte file")
+		existe, nodo := miLista.buscarPorID(id_buscar)
+		if existe {
+			respuesta = reporte_file(nodo, rutaa)
+
+		} else {
+			fmt.Println("¡¡ Error !! No se encontró ningúna particion con ese ID")
+			respuesta = "¡¡ Error !! No se encontró ningúna particion con ese ID"
+			return respuesta
+		}
 	} else if name_rep == "sb" || name_rep == "SB" {
 		existe, nodo := miLista.buscarPorID(id_buscar)
 		if existe {
@@ -3618,7 +3643,7 @@ func reporte_disk(nodoActual *NodoMount, rutaa string) string {
 		fmt.Println("Error:", err)
 	}
 
-	fmt.Println("Tamm ? ", tamano)
+	//fmt.Println("Tamm ? ", tamano)
 
 	nombreedisco := filepath.Base(nodoActual.ruta)
 	nombre := filepath.Base(rutaa)                                   // obtiene el nombre del archivo con la extensión
@@ -4254,8 +4279,6 @@ func reporte_tree(nodoActual *NodoMount, rutaa string) string {
 		// la ruta ya existe, se puede continuar
 	}
 
-	fmt.Println("Aqui va el codigo para el tree")
-
 	dot := "digraph G {\n"
 	dot = dot + "labelloc=\"t\"\n"
 	dot = dot + "label=\"" + nombreedisco + "\"\n"
@@ -4347,7 +4370,138 @@ func reporte_tree_front(idpart string, rutaa string) string {
 	}
 
 	return respuesta
+}
 
+func reporte_file(nodoActual *NodoMount, rutaa string) string {
+	respuesta := ""
+	//fmt.Println("Aqui?")
+
+	// Se lee el contenido del primer archivo
+	sakee, err := verSB(nodoActual.ruta, nodoActual.inicioparticion)
+	if err != nil {
+		// manejar error
+	}
+
+	lines := strings.Split(sakee, "\n")
+
+	//nombreedisco := filepath.Base(nodoActual.ruta)
+	nombre := filepath.Base(rutaa)                                   // obtiene el nombre del archivo con la extensión
+	nombreSinExt := strings.TrimSuffix(nombre, filepath.Ext(nombre)) // remueve la extensión
+
+	// Creacion, escritura y cierre de archivo
+	directorio := rutaa[:strings.LastIndex(rutaa, "/")+1]
+
+	if _, err := os.Stat(directorio); os.IsNotExist(err) {
+		// la ruta no existe, se debe crear
+		if err := os.MkdirAll(directorio, 0755); err != nil {
+			panic(err)
+		}
+
+		if err := os.Chmod(directorio, 0777); err != nil {
+			panic(err)
+		}
+	} else {
+		// la ruta ya existe, se puede continuar
+	}
+
+	rutaArchivo := directorio + nombreSinExt + ".txt"
+	archivo, err := os.Create(rutaArchivo)
+	if err != nil {
+		fmt.Println(err)
+
+	}
+	defer archivo.Close()
+
+	_, err = archivo.WriteString(sakee)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	dot := "digraph G {\n"
+	dot = dot + "labelloc=\"t\"\n"
+	dot = dot + "label=\"" + nombreSinExt + ".txt\"\n"
+	dot = dot + "rankdir=\"LR\"\n"
+	dot = dot + "\"node0\" [label=\"<f0>Contenido|<f1>"
+	for _, line := range lines {
+		dot = dot + " " + line + "\n"
+	}
+	dot = dot + "\"shape=\"record\" style=filled fillcolor=\"gold\"];\n"
+	dot = dot + "}\n"
+
+	archivo2, err := os.Create("ReporteFile.dot")
+	if err != nil {
+		fmt.Println(err)
+		//return err.Error()
+	}
+	defer archivo2.Close()
+
+	_, err = archivo2.WriteString(dot)
+	if err != nil {
+		fmt.Println(err)
+		//return err.Error()
+	}
+
+	nodoActual.rutareporeFile = rutaa
+
+	comando_ejecutar := "dot -Tpng ReporteFile.dot -o " + directorio + nombreSinExt + ".png"
+
+	cmd := exec.Command("/bin/sh", "-c", comando_ejecutar)
+
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("Error al ejecutar el comando:", err)
+		//return err.Error()
+	}
+
+	fmt.Println("")
+	fmt.Println("*              Reporte File creado con exito               *")
+	fmt.Println("")
+
+	respuesta = "*              Reporte File creado con exito               *"
+
+	return respuesta
+}
+
+func reporte_file_front(idpart string, rutaa string) string {
+	respuesta := ""
+
+	if len(usuarioLogeado) != 0 {
+		existe, nodo := miLista.buscarPorID(idpart)
+		if existe {
+
+			if nodo.rutareporeFile != "" {
+				nombre := filepath.Base(nodo.rutareporeFile)                     // obtiene el nombre del archivo con la extensión
+				nombreSinExt := strings.TrimSuffix(nombre, filepath.Ext(nombre)) // remueve la extensión
+
+				// Creacion, escritura y cierre de archivo
+				directorio := nodo.rutareporeFile[:strings.LastIndex(nodo.rutareporeFile, "/")+1]
+
+				ruta_buscar := directorio + nombreSinExt + ".png"
+
+				bytes, _ := ioutil.ReadFile(ruta_buscar)
+				var base64Encoding string
+				base64Encoding += "data:image/png;base64,"
+				base64Encoding += toBase64(bytes)
+				respuesta = base64Encoding
+			} else {
+				respuesta = "NOE"
+				return respuesta
+			}
+
+		} else {
+			fmt.Println("No se encontró ningúna particion con ese ID")
+			//respuesta = "No se encontró ningúna particion con ese ID"
+			respuesta = "NO"
+			return respuesta
+		}
+
+	} else {
+		fmt.Println("¡¡ Error !! No hay ninguna particion montada")
+		respuesta = "¡¡ Error !! No hay ninguna particion montada"
+		return respuesta
+	}
+
+	return respuesta
 }
 
 func reporte_sb(nodoActual *NodoMount, rutaa string) string {
@@ -4634,7 +4788,7 @@ type ListaDobleEnlazada struct {
 	last  *NodoMount
 }
 
-func (lista *ListaDobleEnlazada) MontarP(id string, ruta string, nombreparticion string, tipoparticion string, inicioparticion int, tamanioparticion int, horamontado string, numerodisco int, rutareportedisk string, rutareporteSB string, rutareporteTree string) (*NodoMount, error) {
+func (lista *ListaDobleEnlazada) MontarP(id string, ruta string, nombreparticion string, tipoparticion string, inicioparticion int, tamanioparticion int, horamontado string, numerodisco int, rutareportedisk string, rutareporteSB string, rutareporteTree string, rutareporteFile string) (*NodoMount, error) {
 
 	nuevoNodo := &NodoMount{
 		id:               id,
@@ -4648,6 +4802,7 @@ func (lista *ListaDobleEnlazada) MontarP(id string, ruta string, nombreparticion
 		rutareportedisk:  rutareportedisk,
 		rutareporteSB:    rutareporteSB,
 		rutareporeTree:   rutareporteTree,
+		rutareporeFile:   rutareporteFile,
 		nextmount:        nil,
 		prevmount:        nil,
 	}
